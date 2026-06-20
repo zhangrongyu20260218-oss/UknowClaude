@@ -119,7 +119,8 @@
   <a href="#structured">12 · 结构化输出</a>
   <a href="#errors">13 · 错误处理与重试</a>
   <a href="#multiturn">14 · 多轮会话管理</a>
-  <a href="#appendix">15 · 附录 / 速查</a>
+  <a href="#integration">15 · 实战整合：长跑 coding agent</a>
+  <a href="#appendix">16 · 附录 / 速查</a>
 </nav>
 <main>
   <h1>Claude Opus Message API 完整讲解</h1>
@@ -884,12 +885,125 @@ messages.append({<span class="t-str">"role"</span>: <span class="t-str">"assista
       </div>
     </div>
 
+    <h4>10.3.1 Compaction 的发生路径</h4>
+    <p>Compaction 不是你主动调用的动作，而是 API 在某一次 <code>messages.create</code> 内部"顺手"做掉、再把结果交还给你保管的状态。它的生命周期横跨多轮请求：</p>
+    <ol>
+      <li><strong>开启</strong>：带上 beta header <code>compact-2026-01-12</code> 并在 <code>context_management.edits</code> 里声明 <code>compact_20260112</code>。</li>
+      <li><strong>累积</strong>：开启 ≠ 立刻压缩。API 只在历史涨到<strong>触发阈值</strong>（默认约 150K token，可配 <code>trigger</code>）时才动手。之前每轮都正常返回，<code>content</code> 里没有 compaction 块。</li>
+      <li><strong>触发轮</strong>：那一次请求里，模型照常生成回答；API 检测到超阈值，把<strong>早期那段历史摘要成一个 compaction 块</strong>，连同正常回答一起放进 <code>response.content</code> 返回。</li>
+      <li><strong>客户端回填</strong>：你把整段 <code>response.content</code> 原样 append（见上方代码）——compaction 块被保留下来。</li>
+      <li><strong>下一轮替换</strong>：你重发含 compaction 块的 <code>messages</code>，API <strong>用这个摘要替换掉它所代表的早期原始历史</strong>再送进模型。于是实际进入模型的 token 数下降——这才是 compaction 真正省 token、续命的时刻。</li>
+    </ol>
+    <div class="callout tip">
+      <p><strong>观测点</strong>：盯 <code>resp.usage.input_tokens</code>。触发 compaction 后它<strong>不升反降</strong>，说明摘要替换生效了。</p>
+    </div>
+
+    <div class="callout note">
+      <p><strong>"本地 messages 越来越长，不用删吗？"</strong> 正确性上<strong>不用删</strong>。官方规则：<em>当 API 收到 compaction 块时，它之前的所有内容块都被忽略</em>。所以即使你把一大段已被忽略的历史重发，API 自己从 compaction 块往后读。要区分两个东西：<strong>本地 messages 数组</strong>确实在涨（每轮 +user +assistant），但<strong>实际进入模型的 context</strong> 被 compaction 块截断了，是小的。不删的代价只是"重传那段被忽略的字节"——带宽/内存问题，不是上下文问题。</p>
+    </div>
+
+    <p>若在意带宽/延迟/内存，可以在触发后<strong>主动裁剪</strong>本地数组（可选优化）：</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><span class="lang">触发后可选裁剪</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-com"># 从响应里取出 compaction 块</span>
+compaction_block = <span class="t-fn">next</span>(b <span class="t-kw">for</span> b <span class="t-kw">in</span> resp.content <span class="t-kw">if</span> b.type == <span class="t-str">"compaction"</span>)
+
+<span class="t-com"># 只保留 compaction 块 + 最近几条，丢弃前面已被服务端忽略的历史</span>
+messages = [{<span class="t-str">"role"</span>: <span class="t-str">"assistant"</span>, <span class="t-str">"content"</span>: [compaction_block]}] + messages[<span class="t-num">-3</span>:]</code></pre></div>
+      </div>
+    </div>
+    <div class="callout pitfall">
+      <p><strong>裁剪时唯一的红线</strong>：<code>compaction</code> 块本身<strong>永远不能删</strong>——它是"早期历史"的唯一载体。删了它就等于丢摘要、对话断链，回到"静默丢状态"那个坑。删别的可以，删它不行。</p>
+    </div>
+
+    <h4>10.3.2 二次触发：新摘要替换旧摘要</h4>
+    <p>对话继续涨、再次超阈值时，API 会基于"上一个 compaction 块之后的内容"<strong>再压缩一次</strong>，生成一个<strong>新的</strong> compaction 块。因为"忽略 compaction 块之前的所有块"这条规则对<strong>最新的那个块</strong>生效：</p>
+    <ul>
+      <li>旧的 compaction 块自动失效（被"忽略之前所有块"吃掉），你不用手动处理。</li>
+      <li>新块已间接包含旧摘要的信息（第二次压缩的输入里就含旧块）。</li>
+      <li>你的回填逻辑<strong>完全不变</strong>：还是无脑 append 整段 <code>resp.content</code>；用了裁剪策略就每次按"<code>[最新 compaction 块] + 最近几条</code>"重建。无论压缩多少次，客户端代码同一套，不需要为"第几次触发"写分支。</li>
+    </ul>
+
+    <h4>10.3.3 Context editing 详解：裁剪而非摘要</h4>
+    <p>上表里 Context editing 只占一行，这里展开。它和 compaction 是两种哲学：<strong>context editing = 裁剪</strong>（直接删掉用完即弃的工具结果/思考块，用占位符顶替，其余原封不动）；<strong>compaction = 摘要</strong>（把一大段历史压成一句摘要）。两者都通过 <code>context_management.edits</code> 声明、都在服务端自动执行、都用 beta header <code>context-management-2025-06-27</code>。</p>
+    <p><strong>典型场景</strong>：重工具调用的 agent。grep 整个代码库返回 8000 token、读文件又 12000 token、web 搜索再 6000 token……这些<strong>旧的工具原始输出</strong>模型早已提取完信息、不再需要原文，却还赖在上下文里占 token。<code>clear_tool_uses</code> 到阈值时自动把旧 tool_result 删掉、替换成占位符，保留最近几轮。</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><span class="lang">clear_tool_uses</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code>resp = client.beta.messages.create(
+    model=<span class="t-str">"claude-opus-4-8"</span>, max_tokens=<span class="t-num">4096</span>,
+    messages=messages, tools=tools,
+    betas=[<span class="t-str">"context-management-2025-06-27"</span>],
+    context_management={<span class="t-str">"edits"</span>: [{
+        <span class="t-str">"type"</span>: <span class="t-str">"clear_tool_uses_20250919"</span>,
+        <span class="t-str">"trigger"</span>:        {<span class="t-str">"type"</span>: <span class="t-str">"input_tokens"</span>, <span class="t-str">"value"</span>: <span class="t-num">30000</span>},  <span class="t-com"># 涨到 3 万才触发</span>
+        <span class="t-str">"keep"</span>:           {<span class="t-str">"type"</span>: <span class="t-str">"tool_uses"</span>,    <span class="t-str">"value"</span>: <span class="t-num">3</span>},      <span class="t-com"># 保留最近 3 次工具往返</span>
+        <span class="t-str">"clear_at_least"</span>: {<span class="t-str">"type"</span>: <span class="t-str">"input_tokens"</span>, <span class="t-str">"value"</span>: <span class="t-num">5000</span>},   <span class="t-com"># 至少清 5000 才动手，否则跳过</span>
+        <span class="t-str">"exclude_tools"</span>:  [<span class="t-str">"web_search"</span>],                            <span class="t-com"># web_search 结果永不清</span>
+        <span class="t-str">"clear_tool_inputs"</span>: <span class="t-kw">False</span>,                            <span class="t-com"># 只清结果，不清调用参数</span>
+    }]},
+)</code></pre></div>
+      </div>
+    </div>
+    <table>
+      <tr><th>参数</th><th>默认</th><th>作用</th></tr>
+      <tr><td><code>trigger</code></td><td>100K tokens</td><td>何时启动清理（按 <code>input_tokens</code> 或 <code>tool_uses</code> 次数）</td></tr>
+      <tr><td><code>keep</code></td><td>3 次</td><td>保留最近 N 组 tool_use/result（保 reasoning 连续）</td></tr>
+      <tr><td><code>clear_at_least</code></td><td>无</td><td>清不到这个量就整个跳过（避免清一点点还废掉缓存）</td></tr>
+      <tr><td><code>exclude_tools</code></td><td>无</td><td>某些工具的结果永不清（后面还要引用）</td></tr>
+      <tr><td><code>clear_tool_inputs</code></td><td><code>false</code></td><td><code>true</code> 则连工具调用参数也一起清</td></tr>
+    </table>
+    <p>另一种是清旧思考块 <code>clear_thinking_20251015</code>：<code>keep</code> 取 <code>"all"</code> 或 <code>{"type":"thinking_turns","value":N}</code>。两者可组合，但 <strong><code>clear_thinking</code> 必须列在 <code>clear_tool_uses</code> 之前</strong>：</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><span class="lang">组合 clear_thinking + clear_tool_uses</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code>context_management={<span class="t-str">"edits"</span>: [
+    {<span class="t-str">"type"</span>: <span class="t-str">"clear_thinking_20251015"</span>,           <span class="t-com"># ⚠️ 必须排在前面</span>
+     <span class="t-str">"keep"</span>: {<span class="t-str">"type"</span>: <span class="t-str">"thinking_turns"</span>, <span class="t-str">"value"</span>: <span class="t-num">2</span>}},
+    {<span class="t-str">"type"</span>: <span class="t-str">"clear_tool_uses_20250919"</span>,
+     <span class="t-str">"trigger"</span>: {<span class="t-str">"type"</span>: <span class="t-str">"input_tokens"</span>, <span class="t-str">"value"</span>: <span class="t-num">50000</span>},
+     <span class="t-str">"keep"</span>: {<span class="t-str">"type"</span>: <span class="t-str">"tool_uses"</span>, <span class="t-str">"value"</span>: <span class="t-num">5</span>}},
+]}
+<span class="t-com"># 响应回执：resp.context_management.applied_edits 报告清了多少 token / 多少块</span></code></pre></div>
+      </div>
+    </div>
+    <div class="callout note">
+      <p><strong>裁剪也会影响缓存</strong>：context editing 在 messages 前缀里删东西，被清那一点之后的缓存全部失效、下轮要重写。<code>clear_at_least</code> 就是缓存保护阀——清不到一定量就别清，免得"为省一点点 token 反而把缓存全废了"。这也是 <code>keep</code> 默认留最近几轮、<code>exclude_tools</code> 存在的原因：尽量晚、尽量批量地清。</p>
+    </div>
+    <p><strong>怎么选</strong>：上下文里塞满用过的工具垃圾 → context editing；对话单纯太长、连正常内容都装不下 → compaction。两者常一起用（见 <a href="#integration">第 15 节</a> 实战整合）。</p>
+
     <h3>10.4 规模化工具与指令集</h3>
     <ul>
       <li><strong>Tool search</strong>：工具很多但每次只少数相关时，让模型搜索工具集、只加载相关 schema。它<strong>追加</strong>而非替换，保住缓存。</li>
       <li><strong>Skills</strong>：任务相关的指令包，只在相关时加载（每个 skill 是含 <code>SKILL.md</code> 的目录）。</li>
       <li><strong>Programmatic tool calling（PTC）</strong>：让模型把多个串行工具调用组合成脚本在沙箱里跑，中间结果不进上下文，只把最终输出返回——省 token 又降延迟。</li>
     </ul>
+
+    <h4>10.4.1 Tool search 为什么不破坏缓存</h4>
+    <p>很自然的担心：<strong>需要更多工具时，缓存不就全失效了？</strong> 这只在你<strong>手动改 <code>tools</code> 数组</strong>时成立——<code>tools</code> 渲染在位置 0，一个字节变会让 tools/system/messages 缓存<strong>级联全废</strong>（见 <a href="#context">第 11 节</a>）。Tool search 的存在意义，就是让你<strong>不去改那个数组</strong>。</p>
+    <p>做法：一开始就把<strong>所有工具都声明进 <code>tools</code></strong>，除了 3–5 个高频的，其余全部标 <code>defer_loading: true</code>。这个数组从头到尾不变。需要某个工具时，不是你改数组，而是<strong>模型自己调搜索工具</strong>找到它。</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><span class="lang">defer_loading + tool search</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code>tools = [
+    <span class="t-com"># 搜索工具本身——绝不能 defer</span>
+    {<span class="t-str">"type"</span>: <span class="t-str">"tool_search_tool_regex_20251119"</span>, <span class="t-str">"name"</span>: <span class="t-str">"tool_search_tool_regex"</span>},
+
+    <span class="t-com"># 3-5 个高频工具：不 defer，常驻</span>
+    {<span class="t-str">"name"</span>: <span class="t-str">"read_file"</span>, <span class="t-str">"input_schema"</span>: {...}},
+    {<span class="t-str">"name"</span>: <span class="t-str">"bash"</span>,      <span class="t-str">"input_schema"</span>: {...}},
+
+    <span class="t-com"># 其余几百上千个：全部 defer_loading=True（名字/描述参与搜索，完整 schema 不进前缀）</span>
+    {<span class="t-str">"name"</span>: <span class="t-str">"jira_create_issue"</span>, <span class="t-str">"input_schema"</span>: {...}, <span class="t-str">"defer_loading"</span>: <span class="t-kw">True</span>},
+    {<span class="t-str">"name"</span>: <span class="t-str">"slack_post"</span>,        <span class="t-str">"input_schema"</span>: {...}, <span class="t-str">"defer_loading"</span>: <span class="t-kw">True</span>},
+    <span class="t-com"># ... 还有 997 个，全 defer</span>
+]</code></pre></div>
+      </div>
+    </div>
+    <div class="callout tip">
+      <p><strong>为什么前缀不被破坏</strong>：官方原话——延迟工具<strong>不进入 system-prompt 前缀</strong>；模型通过搜索发现某个延迟工具时，API 把一个 <code>tool_reference</code> 块<strong>追加到对话流里</strong>（断点之后的易变区），再展开成完整定义，<strong>前缀原封不动，缓存被保留</strong>。一句话：tool search 把"改工具列表"（破坏位置 0 前缀）变成了"在对话流里追加工具引用"（不碰前缀）。而且发现的工具会在后续轮自动复用、随 rolling 断点进入缓存区，无需反复搜。</p>
+    </div>
 
     <h3>10.5 agent 场景下的缓存策略</h3>
     <table>
@@ -1169,10 +1283,137 @@ conv.send(<span class="t-str">"我叫 Alice。"</span>)
   </section>
 
   <!-- ============ 15 ============ -->
-  <section id="appendix">
-    <h2><span class="num">15</span>附录 / 速查</h2>
+  <section id="integration">
+    <h2><span class="num">15</span>实战整合：长跑 coding agent</h2>
 
-    <h3>15.1 模型 ID 速查</h3>
+    <p>前面把 prompt caching、context editing、compaction、tool search 一个个讲过了。这一节把它们放进<strong>同一个循环</strong>，展示它们如何协同、又如何互相冲突——这是这套机制里最需要想清楚的地方。</p>
+
+    <h3>15.1 核心张力：缓存要稳定，清理要改前缀</h3>
+    <p>三者的根本矛盾：</p>
+    <ul>
+      <li><strong>prompt caching</strong> 要的是<strong>前缀稳定</strong>——前缀一个字节变，后面全失效。</li>
+      <li><strong>context editing / compaction</strong> 干的恰恰是<strong>改前缀</strong>（删工具结果 / 塞摘要）。</li>
+    </ul>
+    <p>所以综合方案的核心思路：<strong>按"稳定性"分层摆放，让会变动的清理尽量晚、尽量批量地发生</strong>，把缓存失效次数压到最低。</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="text" class="active">分层摆放</button><span class="lang">tools → system → messages</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="text"><pre><code>渲染顺序固定:   tools  →  system  →  messages
+稳定性:         最稳     很稳        最易变
+缓存策略:       位置0    断点①       断点②(最新轮)
+谁会动它:       永不动   永不动      context edit / compaction 在这里清理</code></pre></div>
+      </div>
+    </div>
+
+    <h3>15.2 完整循环</h3>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><span class="lang">caching + editing + compaction + tool search</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">import</span> anthropic
+client = anthropic.Anthropic()
+
+<span class="t-com"># ① TOOLS —— 确定性排序、整个会话不变 → 渲染在位置 0，缓存最稳</span>
+<span class="t-com">#    千万不要每轮动态增删工具；要"更多工具"用 tool search + defer_loading（见 10.4.1）</span>
+TOOLS = <span class="t-fn">sorted</span>([
+    {<span class="t-str">"type"</span>: <span class="t-str">"text_editor_20250728"</span>, <span class="t-str">"name"</span>: <span class="t-str">"str_replace_based_edit_tool"</span>},
+    {<span class="t-str">"type"</span>: <span class="t-str">"bash_20250124"</span>, <span class="t-str">"name"</span>: <span class="t-str">"bash"</span>},
+    {<span class="t-str">"type"</span>: <span class="t-str">"web_search_20250305"</span>, <span class="t-str">"name"</span>: <span class="t-str">"web_search"</span>, <span class="t-str">"max_uses"</span>: <span class="t-num">5</span>},
+], key=<span class="t-kw">lambda</span> t: t[<span class="t-str">"name"</span>])     <span class="t-com"># 排序保证字节确定</span>
+
+<span class="t-com"># ② SYSTEM —— 冻结的大段提示；断点放最后一个 block → 一并缓存 tools + system</span>
+<span class="t-com">#    绝不在这里插 datetime / 用户ID（否则前缀每次变，缓存全废）</span>
+SYSTEM = [{
+    <span class="t-str">"type"</span>: <span class="t-str">"text"</span>, <span class="t-str">"text"</span>: LONG_SYSTEM_PROMPT,
+    <span class="t-str">"cache_control"</span>: {<span class="t-str">"type"</span>: <span class="t-str">"ephemeral"</span>, <span class="t-str">"ttl"</span>: <span class="t-str">"1h"</span>},   <span class="t-com"># 断点①（1h：agent 单步间隔可能数分钟）</span>
+}]
+
+messages = []
+
+<span class="t-kw">def</span> <span class="t-fn">step</span>(user_text=<span class="t-kw">None</span>, tool_results=<span class="t-kw">None</span>):
+    <span class="t-kw">if</span> user_text:
+        messages.append({<span class="t-str">"role"</span>: <span class="t-str">"user"</span>, <span class="t-str">"content"</span>: user_text})
+    <span class="t-kw">if</span> tool_results:
+        messages.append({<span class="t-str">"role"</span>: <span class="t-str">"user"</span>, <span class="t-str">"content"</span>: tool_results})
+
+    <span class="t-com"># ③ 在"最新一轮的最后一个 block"打 messages 断点② → 历史前缀增量命中</span>
+    _place_rolling_breakpoint(messages)
+
+    resp = client.beta.messages.create(
+        betas=[<span class="t-str">"context-management-2025-06-27"</span>, <span class="t-str">"compact-2026-01-12"</span>],
+        model=<span class="t-str">"claude-opus-4-8"</span>, max_tokens=<span class="t-num">16000</span>,
+        thinking={<span class="t-str">"type"</span>: <span class="t-str">"adaptive"</span>},
+        tools=TOOLS, system=SYSTEM, messages=messages,
+        context_management={<span class="t-str">"edits"</span>: [
+            {<span class="t-str">"type"</span>: <span class="t-str">"clear_thinking_20251015"</span>,             <span class="t-com"># 先清思考块（必须排前）</span>
+             <span class="t-str">"keep"</span>: {<span class="t-str">"type"</span>: <span class="t-str">"thinking_turns"</span>, <span class="t-str">"value"</span>: <span class="t-num">2</span>}},
+            {<span class="t-str">"type"</span>: <span class="t-str">"clear_tool_uses_20250919"</span>,             <span class="t-com"># 再清旧工具结果</span>
+             <span class="t-str">"trigger"</span>: {<span class="t-str">"type"</span>: <span class="t-str">"input_tokens"</span>, <span class="t-str">"value"</span>: <span class="t-num">60000</span>},
+             <span class="t-str">"keep"</span>: {<span class="t-str">"type"</span>: <span class="t-str">"tool_uses"</span>, <span class="t-str">"value"</span>: <span class="t-num">3</span>},
+             <span class="t-str">"clear_at_least"</span>: {<span class="t-str">"type"</span>: <span class="t-str">"input_tokens"</span>, <span class="t-str">"value"</span>: <span class="t-num">10000</span>},  <span class="t-com"># ★缓存保护阀</span>
+             <span class="t-str">"exclude_tools"</span>: [<span class="t-str">"web_search"</span>]},
+            {<span class="t-str">"type"</span>: <span class="t-str">"compact_20260112"</span>},                    <span class="t-com"># 兜底：逼近窗口时整体摘要</span>
+        ]},
+    )
+
+    <span class="t-com"># ★唯一正确的回填：整段 content（保住 compaction / thinking / tool_use 块）</span>
+    messages.append({<span class="t-str">"role"</span>: <span class="t-str">"assistant"</span>, <span class="t-str">"content"</span>: resp.content})
+    <span class="t-kw">return</span> resp</code></pre></div>
+      </div>
+    </div>
+    <p>四个关键设计点：<strong>tools 排序+永不变</strong>守住 position-0；<strong>system 冻结+断点</strong>一次缓存 tools+system（用 1h TTL 因为 agent 单步间隔可能数分钟，5 分钟易过期）；<strong>rolling 断点</strong>让前 N-1 轮历史走缓存读、只有本轮新增全价；<strong><code>clear_at_least</code></strong> 是缓存保护阀——清理就是在前缀里删东西、会让该位置之后缓存失效，所以"清不够 1 万 token 就别清"，避免为省一点点反而废掉几万 token 缓存还要付写入费。</p>
+
+    <h3>15.3 缓存命中 / 失效时间线</h3>
+    <p>假设 system+tools≈5000 token，每轮工具结果≈8000，editing 阈值 60K、compact 阈值 150K：</p>
+    <table>
+      <tr><th>轮次</th><th>发生了什么</th><th><code>cache_read</code></th><th><code>input_tokens</code>（全价）</th><th>解读</th></tr>
+      <tr><td>1</td><td>首次请求</td><td>0</td><td>5000+</td><td>冷启动，写缓存</td></tr>
+      <tr><td>2</td><td>正常</td><td>~5000</td><td>本轮新增</td><td>tools+system 命中 ✅</td></tr>
+      <tr><td>3–8</td><td>历史增长</td><td>递增</td><td>本轮新增</td><td>增量命中，省钱主力 ✅</td></tr>
+      <tr><td>9</td><td>到 60K，<strong>触发 clear_tool_uses</strong></td><td>部分</td><td><strong>偏高</strong></td><td>清理点之后缓存失效，本轮重写 ⚠️</td></tr>
+      <tr><td>10</td><td>正常</td><td>恢复高</td><td>本轮新增</td><td>在已清理的新前缀上重新缓存 ✅</td></tr>
+      <tr><td>~30</td><td>到 150K，<strong>触发 compact</strong></td><td>低</td><td><strong>偏高</strong></td><td>compaction 块改了前缀，失效一次 ⚠️</td></tr>
+      <tr><td>31</td><td>整段回填 compaction 块</td><td>恢复</td><td><strong>不升反降</strong></td><td>模型只吃摘要后那段，token 下降 ✅</td></tr>
+    </table>
+    <p>两个 ⚠️ 轮就是清理的代价：缓存失效、要重写。但因为有 <code>clear_at_least</code> 和 <code>keep</code>，清理是<strong>批量、低频</strong>发生的——用"偶尔一轮重写缓存"换"长期上下文不爆炸"，净赚。</p>
+
+    <h3>15.4 把三者的回执放一起读 usage</h3>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><span class="lang">usage 解读 + 诊断</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">def</span> <span class="t-fn">log_usage</span>(resp):
+    u = resp.usage
+    <span class="t-com"># 缓存三件套：总输入 = 三者之和</span>
+    <span class="t-fn">print</span>(<span class="t-str">f"cache_read=</span>{u.cache_read_input_tokens}<span class="t-str"> "</span>          <span class="t-com"># 命中(0.1x)</span>
+          <span class="t-str">f"cache_write=</span>{u.cache_creation_input_tokens}<span class="t-str"> "</span>     <span class="t-com"># 写入(1.25x/2x)</span>
+          <span class="t-str">f"fresh=</span>{u.input_tokens}<span class="t-str">"</span>)                          <span class="t-com"># 全价</span>
+
+    <span class="t-com"># context editing 回执</span>
+    cm = <span class="t-fn">getattr</span>(resp, <span class="t-str">"context_management"</span>, <span class="t-kw">None</span>)
+    <span class="t-kw">if</span> cm <span class="t-kw">and</span> cm.applied_edits:
+        <span class="t-kw">for</span> e <span class="t-kw">in</span> cm.applied_edits:
+            <span class="t-fn">print</span>(<span class="t-str">"  [edit]"</span>, e.type, <span class="t-str">"cleared"</span>, e.cleared_input_tokens, <span class="t-str">"tok"</span>)
+
+    <span class="t-com"># compaction 触发标志</span>
+    <span class="t-kw">if</span> <span class="t-fn">any</span>(b.type == <span class="t-str">"compaction"</span> <span class="t-kw">for</span> b <span class="t-kw">in</span> resp.content):
+        <span class="t-fn">print</span>(<span class="t-str">"  [compaction] 本轮发生整段摘要"</span>)</code></pre></div>
+      </div>
+    </div>
+    <p><strong>诊断口诀</strong>：</p>
+    <ul>
+      <li><code>cache_read</code> 长期 0 → 有静默失效（system 里有 datetime？工具集在变？）。</li>
+      <li>某轮 <code>fresh</code> 突然飙高 + 有 <code>applied_edits</code> → 正常，是清理那一轮的缓存重写。</li>
+      <li>触发 compact 后 <code>input_tokens</code> 不升反降 → 摘要替换生效了，正确。</li>
+    </ul>
+    <div class="callout tip">
+      <p><strong>一句话收口</strong>：稳定的往前放并缓存（tools→system→历史前缀），易变的清理操作往后放并用 <code>clear_at_least</code>/<code>keep</code> 节流；清理那一轮缓存必然失效一次，但换来长期上下文可控——这就是三者协同的全部要点。</p>
+    </div>
+  </section>
+
+  <!-- ============ 16 ============ -->
+  <section id="appendix">
+    <h2><span class="num">16</span>附录 / 速查</h2>
+
+    <h3>16.1 模型 ID 速查</h3>
     <table>
       <tr><th>用户说</th><th>用这个 ID</th></tr>
       <tr><td>opus / opus 4.8 / 最强 Opus</td><td><code>claude-opus-4-8</code></td></tr>
@@ -1181,7 +1422,7 @@ conv.send(<span class="t-str">"我叫 Alice。"</span>)
       <tr><td>haiku / 快 / 便宜</td><td><code>claude-haiku-4-5</code></td></tr>
     </table>
 
-    <h3>15.2 必备 header</h3>
+    <h3>16.2 必备 header</h3>
     <table>
       <tr><th>Header</th><th>值</th></tr>
       <tr><td><code>x-api-key</code></td><td>你的 key</td></tr>
@@ -1190,7 +1431,7 @@ conv.send(<span class="t-str">"我叫 Alice。"</span>)
       <tr><td><code>anthropic-beta</code></td><td>如 <code>files-api-2025-04-14</code>、<code>compact-2026-01-12</code></td></tr>
     </table>
 
-    <h3>15.3 Opus 4.8 关键参数速记</h3>
+    <h3>16.3 Opus 4.8 关键参数速记</h3>
     <table>
       <tr><th>参数</th><th>取值 / 说明</th></tr>
       <tr><td><code>model</code></td><td><code>claude-opus-4-8</code></td></tr>
@@ -1203,7 +1444,7 @@ conv.send(<span class="t-str">"我叫 Alice。"</span>)
       <tr><td><strong>已移除（会 400）</strong></td><td><code>budget_tokens</code>、<code>temperature</code>、<code>top_p</code>、<code>top_k</code>、最后轮 assistant prefill</td></tr>
     </table>
 
-    <h3>15.4 stop_reason 速记</h3>
+    <h3>16.4 stop_reason 速记</h3>
     <p><code>end_turn</code>（正常）· <code>max_tokens</code>（调大/流式）· <code>tool_use</code>（执行工具）· <code>pause_turn</code>（回填续跑）· <code>refusal</code>（查 stop_details）· <code>stop_sequence</code>。</p>
 
     <hr>
