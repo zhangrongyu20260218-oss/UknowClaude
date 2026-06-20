@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>用 Claude Agent SDK 造一个真实应用 · 面向资深程序员的逐行讲解</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel2:#1b1f2a; --fg:#e6e9ef; --muted:#9aa3b2;
+    --accent:#d97757; --accent2:#7aa2f7; --line:#272c38; --code-bg:#11141b;
+    --kw:#c678dd; --str:#98c379; --num:#d19a66; --com:#5c6370; --fn:#61afef; --punct:#abb2bf;
+    --ok:#2ea043; --warn:#d29922; --danger:#f85149;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;line-height:1.75}
+  .layout{display:flex;max-width:1500px;margin:0 auto}
+  nav.toc{width:310px;flex:0 0 310px;position:sticky;top:0;align-self:flex-start;height:100vh;
+    overflow-y:auto;border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav.toc h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:6px;
+    font-size:13.5px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--fg);background:var(--panel2)}
+  nav.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--panel2)}
+  nav.toc .brand{font-weight:700;font-size:18px;color:var(--fg);margin-bottom:4px}
+  nav.toc .brand small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:4px}
+  main{flex:1 1 auto;min-width:0;padding:40px 56px 120px;max-width:1000px}
+  h1{font-size:33px;line-height:1.25;margin:0 0 8px}
+  .subtitle{color:var(--muted);font-size:16px;margin:0 0 28px}
+  section{padding-top:48px;margin-top:-24px}
+  section>h2{font-size:25px;border-bottom:1px solid var(--line);padding-bottom:10px;margin:8px 0 18px}
+  section>h2 .num{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:19px;margin:30px 0 10px;color:#f0f2f6}
+  h4{font-size:15.5px;margin:20px 0 8px;color:var(--accent2)}
+  p{margin:12px 0}
+  a{color:var(--accent2)}
+  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    font-size:.88em;background:var(--panel2);padding:2px 6px;border-radius:5px;color:#e3b7a6}
+  ul,ol{padding-left:24px}
+  li{margin:6px 0}
+  strong{color:#fff}
+  hr{border:none;border-top:1px solid var(--line);margin:32px 0}
+  .lead{font-size:17px;color:#cfd6e1;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:16px 18px}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;background:var(--panel)}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600}
+  td code{background:var(--code-bg)}
+  tr:hover td{background:var(--panel2)}
+  .callout{border-radius:10px;padding:14px 16px 14px 46px;margin:18px 0;position:relative;border:1px solid var(--line);font-size:15px}
+  .callout::before{position:absolute;left:14px;top:13px;font-size:18px;font-weight:700}
+  .callout.note{background:rgba(122,162,247,.08);border-color:rgba(122,162,247,.35)}
+  .callout.note::before{content:"ℹ";color:var(--accent2)}
+  .callout.tip{background:rgba(46,160,67,.08);border-color:rgba(46,160,67,.35)}
+  .callout.tip::before{content:"✓";color:var(--ok)}
+  .callout.warn{background:rgba(210,153,34,.08);border-color:rgba(210,153,34,.4)}
+  .callout.warn::before{content:"⚠";color:var(--warn)}
+  .callout.pitfall{background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.4)}
+  .callout.pitfall::before{content:"✕";color:var(--danger)}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .codewrap{margin:16px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--code-bg)}
+  .codehead{display:flex;align-items:center;background:var(--panel2);border-bottom:1px solid var(--line);
+    padding:7px 14px;font-size:12.5px;color:var(--muted)}
+  .codehead .fname{color:#cdd3df;font-family:"SF Mono",ui-monospace,monospace}
+  .codehead .lang{margin-left:auto;color:var(--com);font-size:11.5px}
+  .panes{position:relative}
+  pre{margin:0;padding:16px 18px;overflow-x:auto;font-size:13.3px;line-height:1.62;
+    font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre code{background:none;padding:0;color:#c9d1e0;font-size:inherit}
+  .copybtn{position:absolute;top:7px;right:8px;background:var(--panel2);color:var(--muted);
+    border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;z-index:2}
+  .copybtn:hover{color:var(--fg);border-color:var(--accent)}
+  .t-kw{color:var(--kw)} .t-str{color:var(--str)} .t-num{color:var(--num)}
+  .t-com{color:var(--com);font-style:italic} .t-fn{color:var(--fn)} .t-dec{color:var(--accent2)}
+  .ln{color:#3a4150;display:inline-block;width:2.2em;text-align:right;margin-right:14px;user-select:none}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);
+    color:var(--muted);background:var(--panel2);margin-left:8px;vertical-align:middle}
+  .pill.beta{color:var(--warn);border-color:rgba(210,153,34,.4)}
+  .pill.core{color:var(--ok);border-color:rgba(46,160,67,.4)}
+  .anno{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 18px;margin:14px 0}
+  .anno li{margin:9px 0}
+  .anno code{background:var(--code-bg)}
+  .anno b{color:var(--accent)}
+  .menu-toggle{display:none}
+  @media(max-width:980px){
+    nav.toc{position:fixed;left:0;top:0;z-index:50;transform:translateX(-100%);transition:transform .2s;width:280px;flex-basis:280px}
+    nav.toc.open{transform:translateX(0)}
+    main{padding:64px 20px 100px}
+    .menu-toggle{display:block;position:fixed;top:12px;left:12px;z-index:60;background:var(--accent);
+      color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer}
+  }
+</style>
+</head>
+<body>
+<button class="menu-toggle" id="menuToggle">☰ 目录</button>
+<div class="layout">
+<nav class="toc" id="toc">
+  <div class="brand">用 Agent SDK 造真实应用
+    <small>逐行讲解 · 资深程序员向 · 模型 <code style="background:none;color:var(--accent)">claude-opus-4-8</code></small>
+  </div>
+  <h2>正文</h2>
+  <a href="#overview">1 · 心智模型：Agent 到底是什么</a>
+  <a href="#scaffold">2 · 项目骨架与客户端</a>
+  <a href="#toolsurface">3 · 工具面设计与安全边界</a>
+  <a href="#tools">4 · 定义工具与执行器</a>
+  <a href="#loop">5 · 核心：手写 agentic loop ★</a>
+  <a href="#runner">6 · Tool Runner：少写一个循环</a>
+  <a href="#streaming">7 · 流式 + Thinking/Effort ★</a>
+  <a href="#servertools">8 · 服务端工具与 pause_turn</a>
+  <a href="#caching">9 · Prompt Caching 与前缀铁律</a>
+  <a href="#context">10 · 长跑：Compaction 与 Context Editing</a>
+  <a href="#memory">11 · 跨会话记忆 memory</a>
+  <a href="#structured">12 · 结构化输出与子代理</a>
+  <a href="#robust">13 · 错误处理、refusal 与人审</a>
+  <a href="#integration">14 · 完整整合：能跑的 CLI agent ★</a>
+  <a href="#bestpractice">15 · 最佳实践清单 &amp; 速查</a>
+</nav>
+<main>
+  <h1>用 Claude Agent SDK 造一个真实应用</h1>
+  <p class="subtitle">写给会 HTTP/SDK、会工程，但还没把 LLM 当成「带几处反直觉行为的运行时」来用的资深程序员。我们不堆 API 列表，而是从零造一个能跑的 CLI 编码 Agent —— <code>miniclaude</code>，逐行解释每一行为什么这么写。主线 Python 官方 SDK，默认模型 <code>claude-opus-4-8</code>。</p>
+
+  <div class="lead">
+    <p style="margin:0">一个 Agent 在工程上只有一句话：<strong>把模型放进一个循环里，循环每一圈让模型选工具、你执行工具、把结果喂回去，直到模型说「做完了」。</strong>本文把这句话拆成可运行代码：工具怎么设计才安全、循环怎么写才不丢 <code>tool_use</code>、长任务上下文怎么不爆、跨会话怎么记住、出错/被拒/要人审怎么办。每一条都对应 SDK 的真实行为，不是凭印象。</p>
+  </div>
+
+  <div class="callout note">
+    <p><b>我们要造的东西。</b><code>miniclaude</code> 是一个终端里的自治编码助手：你给它一句任务（「把 utils.py 里的同步函数改成 async」），它自己读文件、改文件、跑命令、必要时联网搜索，边想边干，干完汇报。它是一个「迷你版 Claude Code」，足够覆盖 Agent 的全部核心能力，又小到能逐行读完。</p>
+  </div>
+
+  <div class="callout warn">
+    <p><b>关于「Agent SDK」这个词。</b>构建 Agent 有两条官方路径：<strong>(A) 自己托管算力</strong>—— 用 Anthropic 官方 SDK（<code>anthropic</code>）在 <code>/v1/messages</code> 上自己写 agentic loop；<strong>(B) 托管 Agent（Managed Agents）</strong>—— Anthropic 替你跑循环、并提供每个会话一个沙箱容器。本文走 (A)：你掌控每一次工具执行、审批、日志，最适合「装进自己产品里」。第 14 节会指出何时该换成 (B)。</p>
+  </div>
+
+  <!-- ============================ 1 ============================ -->
+  <section id="overview">
+    <h2><span class="num">1</span>心智模型：Agent 到底是什么</h2>
+
+    <p>先把名词去魅。模型 API 本身是<strong>无状态的</strong>：一次 <code>messages.create</code> 进去一段对话历史，出来一段回复。它不会「记得」上一次，也不会自己执行任何东西。所谓 Agent，就是你在它外面套的一个控制循环：</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">agentic loop 的本质（伪代码）</span><span class="lang">pseudocode</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>messages = [{"role": "user", "content": 任务}]
+while True:
+    resp = model(messages, tools)          # 模型看历史 + 可用工具，决定下一步
+    if resp.stop_reason == "end_turn":     # 模型说「我说完了，不需要工具」
+        break
+    results = [执行(tu) for tu in resp 里的 tool_use 块]   # 你来跑工具
+    messages += [resp, {"role":"user", "content": results}]  # 把结果喂回去
+return resp 里的最后一段文本</code></pre></div>
+    </div>
+
+    <p>三件事决定了这个循环的全部复杂度，也是本文的主干：</p>
+    <ul>
+      <li><strong>工具（tools）</strong>：模型能调用什么。工具的「形状」决定了你的程序能对每个动作做什么 —— 拦截、审批、渲染、并行（第 3、4 节）。</li>
+      <li><strong>停止条件（stop_reason）</strong>：什么时候退出循环。<code>end_turn</code> / <code>tool_use</code> / <code>pause_turn</code> / <code>refusal</code> / <code>max_tokens</code> 每一种都要处理（第 5、8、13 节）。</li>
+      <li><strong>上下文（context）</strong>：历史会越滚越长。长跑 Agent 必须主动管理上下文，否则要么爆 1M 窗口，要么烧钱（第 9、10、11 节）。</li>
+    </ul>
+
+    <h3>什么时候<strong>不该</strong>造 Agent</h3>
+    <p>Agent 是最贵、最慢、最难调的那一层。官方给的判据是四个都为「是」才上：</p>
+    <table>
+      <thead><tr><th>判据</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td>复杂度</td><td>任务多步、无法提前完全写死流程（「把设计文档变成 PR」而不是「抽取 PDF 标题」）</td></tr>
+        <tr><td>价值</td><td>结果值得更高的成本与延迟</td></tr>
+        <tr><td>可行性</td><td>模型确实擅长这类任务</td></tr>
+        <tr><td>错误成本</td><td>错了能被发现并回滚（有测试、有 review）</td></tr>
+      </tbody>
+    </table>
+    <p>任何一个为「否」，退回更简单的层：单次调用，或你自己编排的 workflow（用 tool use 但循环逻辑由你的代码主导）。编码助手四个都满足，所以我们造它。</p>
+  </section>
+
+  <!-- ============================ 2 ============================ -->
+  <section id="scaffold">
+    <h2><span class="num">2</span>项目骨架与客户端</h2>
+
+    <p>先把工程搭起来。三个文件：<code>tools.py</code>（工具定义+执行器）、<code>agent.py</code>（循环）、<code>main.py</code>（入口）。本节先建客户端，并把传输层的反直觉点一次讲清。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">client.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import anthropic
+
+MODEL = "claude-opus-4-8"
+
+client = anthropic.Anthropic(
+    max_retries=4,
+    timeout=600.0,
+)</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b>第 1 行</b> 官方 SDK 包名就是 <code>anthropic</code>。不要在 Python 项目里手搓 <code>requests</code> 去打 <code>/v1/messages</code>——SDK 帮你处理重试、超时缩放、流式累积、类型，全丢掉得不偿失。</li>
+      <li><b>第 3 行</b> 模型 ID 是<strong>完整即用</strong>的字符串 <code>claude-opus-4-8</code>，<strong>不要</strong>自己补日期后缀（<code>...-20251101</code> 之类会 404）。Agent 默认就用 Opus 4.8：它是长跑自治任务最强的一档，别为省钱擅自降级——那是用户的决定。</li>
+      <li><b>第 5 行</b> 不传 <code>api_key</code> 是<strong>推荐</strong>写法：SDK 会按顺序从环境解析凭据（<code>ANTHROPIC_API_KEY</code> → <code>ANTHROPIC_AUTH_TOKEN</code> → <code>ant auth login</code> 的本地 profile）。永远不要把 key 硬编码进源码。</li>
+      <li><b>第 6 行</b> <code>max_retries</code> 默认 2，SDK 自动重试 408/409/429/5xx + 连接错误，指数退避。把它调到 4 让长跑 Agent 更稳。注意：超时也会被重试，最坏挂钟时间 ≈ <code>timeout × (max_retries+1)</code>。</li>
+      <li><b>第 7 行</b> 默认超时 10 分钟。Opus 4.8 在 <code>effort=high</code> 下单个请求可能跑好几分钟；<code>timeout</code> 单位是<strong>秒</strong>（TypeScript SDK 是<strong>毫秒</strong>，别记混）。</li>
+    </ol></div>
+
+    <div class="callout pitfall">
+      <p><b>反直觉点：高 <code>max_tokens</code> 必须流式。</b>非流式请求在 <code>max_tokens</code> 较大时会撞上 SDK 的 HTTP 超时保护——SDK 估算请求会超过 ~10 分钟时直接抛 <code>ValueError</code>。规则：<strong>输出可能 &gt; ~16K token 时一律用 <code>messages.stream()</code></strong>（第 7 节）。Opus 4.8 支持最高 128K 输出，但 128K 这种量级强制要流式。</p>
+    </div>
+
+    <h4>异步与高并发</h4>
+    <p>单个交互式 Agent 用同步客户端足矣。如果你要同时跑很多 Agent（比如服务端为多个用户各起一个），用 <code>AsyncAnthropic</code>，并安装 <code>anthropic[aiohttp]</code> 切到 aiohttp 后端以降低高并发开销。本文为可读性用同步版。</p>
+  </section>
+
+  <!-- ============================ 3 ============================ -->
+  <section id="toolsurface">
+    <h2><span class="num">3</span>工具面设计与安全边界</h2>
+
+    <p>这一节没有代码，但它是 Agent 工程里<strong>最重要</strong>的设计决策，比循环本身更难。核心问题：同一个动作，是给模型一个 <code>bash</code> 工具，还是给它一个专用工具？</p>
+
+    <p>模型只会「发出工具调用」，真正执行的是你的 harness。所以工具的形状 = 你的 harness 能对这个动作做什么。</p>
+
+    <table>
+      <thead><tr><th></th><th><code>bash</code> 工具</th><th>专用工具（如 <code>edit_file</code>）</th></tr></thead>
+      <tbody>
+        <tr><td>给模型的能力</td><td>极广，几乎能做任何事</td><td>受限于你定义的 schema</td></tr>
+        <tr><td>给 harness 的把手</td><td>只有一个不透明的命令字符串，每个动作形状都一样</td><td>带类型的参数，可拦截/校验/渲染/审计</td></tr>
+        <tr><td>能否安全网关</td><td>难：<code>bash -c "curl -X POST ..."</code> 没法识别</td><td>易：<code>send_email</code> 工具天然可挂审批</td></tr>
+        <tr><td>能否做新鲜度校验</td><td>不能</td><td>能：<code>edit</code> 可拒绝「文件自上次读取后被改过」的写入</td></tr>
+        <tr><td>能否并行调度</td><td>不能：分不清并行安全的 <code>grep</code> 和不安全的 <code>git push</code></td><td>能：只读工具可标记为并行安全</td></tr>
+      </tbody>
+    </table>
+
+    <p class="callout tip"><span></span><b>经验法则：</b>用 <code>bash</code> 起步拿广度；当某个动作需要<strong>网关、渲染、审计、或并行</strong>时，把它提升为专用工具。可逆性是个好判据——难以撤销的动作（外部 API 调用、发消息、删数据）应该是专用工具并挂审批。</p>
+
+    <p><code>miniclaude</code> 的取舍：我们给一个 <code>run_bash</code>（广度）+ 三个专用文件工具 <code>read_file</code> / <code>write_file</code> / <code>edit_file</code>（因为文件操作要做路径安全校验和「写前必读」的新鲜度约束）。联网用 Anthropic 的<strong>服务端</strong> <code>web_search</code>（第 8 节，无需本地执行）。</p>
+
+    <div class="callout note">
+      <p><b>Anthropic 还内置了两个「无 schema」工具。</b><code>bash_20250124</code> 和 <code>text_editor_20250728</code> 是官方定义、由你客户端执行的工具——声明时只给 <code>type</code> 和 <code>name</code>，<strong>不要</strong>给 <code>input_schema</code>，模型内置了它们的用法。本文为了把「工具设计」讲透，用自定义工具演示；生产里直接用官方这两个也完全可以，且模型对它们的调用更熟练。</p>
+    </div>
+  </section>
+
+  <!-- ============================ 4 ============================ -->
+  <section id="tools">
+    <h2><span class="num">4</span>定义工具与执行器</h2>
+
+    <p>一个工具有两半：<strong>给模型看的定义</strong>（name/description/JSON Schema）和<strong>你来跑的执行器</strong>。先看定义。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">tools.py — 工具定义</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>TOOLS = [
+    {
+        "name": "read_file",
+        "description": "读取工作区内一个文本文件的内容。在修改任何文件前，必须先用本工具读取它。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "相对于工作区根目录的路径"}
+            },
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "edit_file",
+        "description": "对文件做精确字符串替换。old_str 必须在文件中唯一匹配一次，"
+                       "否则报错。调用前必须先 read_file 读过该文件。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "old_str": {"type": "string", "description": "要被替换的原文，需唯一"},
+                "new_str": {"type": "string", "description": "替换后的新文本"},
+            },
+            "required": ["path", "old_str", "new_str"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "run_bash",
+        "description": "在工作区内执行一条 bash 命令并返回 stdout+stderr。用于跑测试、"
+                       "查目录、git 等。命令是不可信输入，会在隔离环境中受限执行。",
+        "input_schema": {
+            "type": "object",
+            "properties": {"command": {"type": "string"}},
+            "required": ["command"],
+        },
+    },
+]</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b>description 是模型的唯一说明书。</b>模型完全靠它决定<strong>何时</strong>调用。要<strong>规定式地写「什么时候用」</strong>，不只是「这是干嘛的」。注意 <code>read_file</code> 和 <code>edit_file</code> 的描述里都写了「修改前必须先读」——这是用自然语言给模型注入工作流约束，比事后报错更省一轮。近期 Opus 模型调工具更克制，把触发条件写进 description 能显著提升「该调就调」的命中率。</li>
+      <li><b><code>input_schema</code> 是标准 JSON Schema。</b>用 <code>required</code> 标真正必填的参数；用 <code>enum</code> 锁定固定取值；每个属性都写 <code>description</code>。</li>
+      <li><b><code>additionalProperties: False</code></b>（见 <code>edit_file</code>）配合下面要讲的 <code>strict</code> 能保证模型不会塞进 schema 之外的字段。</li>
+    </ol></div>
+
+    <h3>执行器：把模型的意图变成真实副作用 —— 安全是第一位</h3>
+
+    <p><code>path</code> 和 <code>command</code> 都是<strong>不可信的模型输出</strong>。直接 <code>open(path)</code> 或 <code>os.system(command)</code> 是路径穿越和命令注入的活靶子。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">tools.py — 安全的执行器</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import subprocess
+from pathlib import Path
+
+WORKSPACE = Path("./workspace").resolve()     # 固定的项目根，一切都关进这里
+
+def _safe_path(rel: str) -> Path:
+    """把模型给的相对路径解析为规范路径，并验证它仍在工作区内。"""
+    target = (WORKSPACE / rel).resolve()
+    if not target.is_relative_to(WORKSPACE):  # Python 3.9+: 拒绝 .. / 符号链接逃逸
+        raise ValueError(f"路径越界，拒绝访问: {rel}")
+    return target
+
+def read_file(path: str) -> str:
+    return _safe_path(path).read_text(encoding="utf-8")
+
+def edit_file(path: str, old_str: str, new_str: str) -> str:
+    p = _safe_path(path)
+    text = p.read_text(encoding="utf-8")
+    count = text.count(old_str)
+    if count == 0:
+        raise ValueError("old_str 未匹配到任何内容")
+    if count > 1:
+        raise ValueError(f"old_str 匹配到 {count} 处，必须唯一；请提供更多上下文")
+    p.write_text(text.replace(old_str, new_str), encoding="utf-8")
+    return f"已修改 {path}"
+
+def run_bash(command: str) -> str:
+    result = subprocess.run(
+        ["bash", "-c", command],
+        cwd=WORKSPACE, capture_output=True, text=True, timeout=120,
+    )
+    return f"[exit={result.returncode}]\n{result.stdout}\n{result.stderr}"
+
+DISPATCH = {"read_file": read_file, "edit_file": edit_file, "run_bash": run_bash}</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b><code>WORKSPACE = ...resolve()</code></b> 先把根目录规范化（解析符号链接、绝对化）。所有文件操作都必须落在这棵子树内。</li>
+      <li><b><code>_safe_path</code> 是安全核心。</b>先把 <code>WORKSPACE / rel</code> <code>.resolve()</code> 成规范形式（这会展开 <code>..</code> 和符号链接），再用 <code>is_relative_to(WORKSPACE)</code> 验证它没逃出根目录。<code>../../etc/passwd</code>、绝对路径、符号链接逃逸都会在这里被挡下。<strong>永远不要</strong>把原始 <code>path</code> 直接喂给 <code>open()</code>。</li>
+      <li><b><code>edit_file</code> 强制唯一匹配。</b>0 处匹配或多处匹配都报错——这把「替换错地方」这个最常见的 Agent bug 在执行层挡掉，而不是寄希望于模型。报错信息写得有用（「匹配到 N 处，请提供更多上下文」），模型能据此自我纠正。</li>
+      <li><b><code>run_bash</code> 的命令是不可信输入。</b>这里用 <code>cwd=WORKSPACE</code> 限定工作目录、<code>timeout=120</code> 限时。<strong>生产级</strong>还需要：跑在容器/受限用户里、可执行程序<strong>白名单</strong>、拒绝 shell 操作符（<code>&amp;&amp; | ; `$()`</code>）、资源限制、全量日志。黑名单不够。</li>
+      <li><b><code>DISPATCH</code></b> 把工具名映射到函数，循环里据此分发。</li>
+    </ol></div>
+  </section>
+
+  <!-- ============================ 5 ============================ -->
+  <section id="loop">
+    <h2><span class="num">5</span>核心：手写 agentic loop <span class="pill core">CORE</span></h2>
+
+    <p>这是整个 Agent 的心脏。手写循环（而非用 Tool Runner）让你能在每一步插入日志、审批、条件执行——任何严肃产品都需要这种掌控力。逐行读。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">agent.py — 手写 agentic loop</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import json
+from client import client, MODEL
+from tools import TOOLS, DISPATCH
+
+SYSTEM = (
+    "你是 miniclaude，一个在终端工作的自治编码助手。"
+    "你能读写文件、运行命令。修改任何文件前必须先读取它。"
+    "完成任务后用一两句话说明你做了什么。"
+)
+
+def run_agent(task: str) -> str:
+    messages = [{"role": "user", "content": task}]
+
+    while True:
+        resp = client.messages.create(
+            model=MODEL,
+            max_tokens=16000,
+            system=SYSTEM,
+            thinking={"type": "adaptive"},
+            tools=TOOLS,
+            messages=messages,
+        )
+
+        if resp.stop_reason == "refusal":
+            return "[模型出于安全原因拒绝了该请求]"
+
+        if resp.stop_reason == "end_turn":
+            return next(b.text for b in resp.content if b.type == "text")
+
+        # 走到这里 stop_reason == "tool_use"：先把助手这一轮整段追加进历史
+        messages.append({"role": "assistant", "content": resp.content})
+
+        tool_results = []
+        for block in resp.content:
+            if block.type != "tool_use":
+                continue
+            try:
+                output = DISPATCH[block.name](**block.input)
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": output,
+                })
+            except Exception as e:
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": f"工具执行失败: {e}",
+                    "is_error": True,
+                })
+
+        messages.append({"role": "user", "content": tool_results})</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b><code>SYSTEM</code> 提示词</b> 定义 Agent 的人格与硬约束。对 Opus 4.8，别用「CRITICAL: YOU MUST」这种激进措辞——它会让模型过度触发；4.8 对系统提示词遵循度很高，平铺直叙即可。</li>
+      <li><b><code>messages</code> 是唯一的状态。</b>API 无状态，整个对话历史靠这个数组在每次请求时全量带上。第一条必须是 <code>user</code>。</li>
+      <li><b><code>thinking={"type": "adaptive"}</code></b> 开启自适应思考：模型自己决定每一步想多深，并在工具调用之间自动穿插思考。这是 4.6+ 的推荐模式。注意 <code>budget_tokens</code> 在 Opus 4.8 上已移除，传了会 400——别用旧写法。要更省可加 <code>output_config={"effort": "medium"}</code>（low/medium/high/xhigh/max），但 Agent 类任务建议至少 high。</li>
+      <li><b>先判 <code>refusal</code>，再判 <code>end_turn</code>。</b>安全分类器可能返回 HTTP 200 但 <code>stop_reason == "refusal"</code>，此时 <code>content</code> 可能为空。<strong>必须在读 <code>resp.content[0]</code> 之前先查 <code>stop_reason</code></strong>，否则会在被拒请求上抛索引错误。</li>
+      <li><b><code>end_turn</code> = 模型说完了、不再要工具。</b>从 content 里取出文本块返回，循环结束。<code>next(...)</code> 安全地拿第一个 <code>type=="text"</code> 的块——因为开了 thinking，content 里第一个块可能是 thinking 块，直接 <code>content[0].text</code> 会出错。</li>
+      <li><b>关键：先把 <code>resp.content</code> 整段追加进历史，再处理工具。</b>这一步漏了，模型下一轮就看不到自己上一轮发的 <code>tool_use</code> 块，整个对话结构就坏了。必须追加<strong>整个 content</strong>（含 thinking 块、tool_use 块），不能只追加文本。</li>
+      <li><b>遍历所有 <code>tool_use</code> 块。</b>一条助手消息里可能有<strong>多个</strong> <code>tool_use</code>（并行工具调用，默认开启）。这里用 <code>DISPATCH</code> 分发执行。</li>
+      <li><b>每个 <code>tool_result</code> 必须带匹配的 <code>tool_use_id</code>。</b>这是结果与调用的绑定键。漏一个 ID 没对上，下一轮请求会被 400 拒绝。</li>
+      <li><b>工具失败要回 <code>is_error: True</code>，而不是抛异常中断循环。</b>把错误信息作为 <code>tool_result</code> 喂回去，模型会据此调整策略或换路。这让 Agent 有自愈能力。失败的工具<strong>不能丢</strong>——每个 <code>tool_use</code> 都必须有一个对应的 <code>tool_result</code>。</li>
+      <li><b>所有 <code>tool_result</code> 放进<strong>同一条</strong> user 消息。</b>千万别拆成多条 user 消息——那会悄悄训练模型以后不再做并行调用。一条 assistant（多个 tool_use）→ 一条 user（多个 tool_result）。</li>
+    </ol></div>
+
+    <div class="callout pitfall">
+      <p><b>最容易写错的三处，按踩坑频率排序：</b>① 忘了把 <code>resp.content</code> 追加进历史就去处理工具 → 模型「失忆」；② <code>tool_result</code> 漏 <code>tool_use_id</code> 或漏了某个块 → 400；③ 把多个 <code>tool_result</code> 拆进多条消息 → 并行能力退化。这三条几乎是每个新手都会犯的。</p>
+    </div>
+
+    <h4>tool input 一律用结构化字段，别字符串匹配</h4>
+    <p>注意上面用的是 <code>block.input</code>（SDK 已解析成 dict）和 <code>**block.input</code> 解包。Opus 4.8 可能对工具输入里的 JSON 字符串采用不同转义（Unicode、正斜杠），所以<strong>永远不要</strong>对序列化后的 input 做原始字符串匹配——SDK 给你的 <code>.input</code> 已经是解析好的对象，直接用。</p>
+  </section>
+
+  <!-- ============================ 6 ============================ -->
+  <section id="runner">
+    <h2><span class="num">6</span>Tool Runner：少写一个循环 <span class="pill beta">beta</span></h2>
+
+    <p>如果你<strong>不需要</strong>在每一步插入审批/日志，SDK 的 Tool Runner 能把第 5 节那个循环整个吃掉。它自动：调 API → 检测 tool_use → 执行你的函数 → 喂回结果 → 重复，直到模型不再调工具。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">用 @beta_tool 重写（对照）</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import anthropic
+from anthropic import beta_tool
+
+client = anthropic.Anthropic()
+
+@beta_tool
+def read_file(path: str) -> str:
+    """读取工作区内一个文本文件。修改前必须先读。
+
+    Args:
+        path: 相对于工作区根目录的路径。
+    """
+    return _safe_path(path).read_text(encoding="utf-8")
+
+# 同理用 @beta_tool 装饰 edit_file / run_bash ...
+
+runner = client.beta.messages.tool_runner(
+    model="claude-opus-4-8",
+    max_tokens=16000,
+    system=SYSTEM,
+    tools=[read_file, edit_file, run_bash],
+    messages=[{"role": "user", "content": task}],
+)
+
+for message in runner:        # 每圈 yield 一个 BetaMessage；模型不再调工具时自动停
+    for block in message.content:
+        if block.type == "text":
+            print(block.text)</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b><code>@beta_tool</code></b> 把一个带类型注解和 docstring 的普通函数变成工具：schema 从函数签名<strong>自动生成</strong>，description 来自 docstring。少维护一份手写 JSON Schema。</li>
+      <li><b><code>client.beta.messages.tool_runner(...)</code></b> 在 <code>beta</code> 命名空间下（这是 beta 功能）。返回一个可迭代的 runner。</li>
+      <li><b><code>for message in runner:</code></b> 每一圈产出一条完整的 <code>BetaMessage</code>，模型没有更多工具调用时迭代自动结束——你完全不用碰 <code>tool_use_id</code>、不用拼 <code>tool_result</code>、不用判 <code>stop_reason</code>。</li>
+    </ol></div>
+
+    <p class="callout tip"><span></span><b>怎么选：</b>需要<strong>人审批准、自定义日志、条件执行、按工具并行调度</strong> → 手写循环（第 5 节）。只是想跑通、工具无危险副作用 → Tool Runner。<code>miniclaude</code> 因为要做命令审批（第 13 节），主线用手写循环。</p>
+  </section>
+
+  <!-- ============================ 7 ============================ -->
+  <section id="streaming">
+    <h2><span class="num">7</span>流式 + Thinking/Effort <span class="pill core">CORE</span></h2>
+
+    <p>交互式 Agent 必须流式：用户要看到「它在想、在动」，而不是盯着一个十几秒的空白。同时高 <code>max_tokens</code> 也强制要流式（第 2 节）。我们把第 5 节循环里的 <code>create</code> 换成 <code>stream</code>。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">agent.py — 流式版的一圈</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>with client.messages.stream(
+    model=MODEL,
+    max_tokens=16000,
+    system=SYSTEM,
+    thinking={"type": "adaptive", "display": "summarized"},
+    output_config={"effort": "high"},
+    tools=TOOLS,
+    messages=messages,
+) as stream:
+    for event in stream:
+        if event.type == "content_block_start":
+            if event.content_block.type == "thinking":
+                print("\n💭 思考中…", flush=True)
+            elif event.content_block.type == "tool_use":
+                print(f"\n🔧 调用 {event.content_block.name}", flush=True)
+        elif event.type == "content_block_delta":
+            if event.delta.type == "thinking_delta":
+                print(event.delta.thinking, end="", flush=True)
+            elif event.delta.type == "text_delta":
+                print(event.delta.text, end="", flush=True)
+
+    resp = stream.get_final_message()   # 流结束后拿到完整 Message，含 stop_reason</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b><code>with client.messages.stream(...) as stream:</code></b> 推荐的流式入口（不是 <code>create(stream=True)</code>）。它会自动累积状态，并提供 <code>get_final_message()</code>。</li>
+      <li><b><code>"display": "summarized"</code> 必须显式加。</b>在 Opus 4.8/4.7 上，thinking 的 <code>display</code> 默认是 <code>"omitted"</code>——思考块照样产生，但 <code>thinking</code> 字段是空串。如果你要把推理流给用户看，不加这一行就会表现为「一段长长的卡顿后才出文字」。</li>
+      <li><b><code>output_config={"effort": "high"}</code></b> effort 嵌在 <code>output_config</code> 里，不是顶层参数。它控制思考深度+整体 token 花销。Agent/编码任务官方建议 <code>xhigh</code> 最佳、至少 <code>high</code>；<code>max</code> 用在正确性压倒成本时。</li>
+      <li><b>逐事件消费。</b><code>content_block_start</code> 告诉你新块的类型（thinking / text / tool_use）；<code>content_block_delta</code> 带增量内容（<code>thinking_delta</code> / <code>text_delta</code>）。<code>end=""</code> + <code>flush=True</code> 让 token 即时显示。</li>
+      <li><b><code>get_final_message()</code></b> 是关键：流结束后它返回累积好的完整 <code>Message</code>，含 <code>stop_reason</code> 和所有 <code>tool_use</code> 块。第 5 节循环后续逻辑（判 stop_reason、追加历史、执行工具）原样接上。<strong>即使你只想要最终结果，也建议用 <code>stream()</code> + <code>get_final_message()</code></strong>——它给你超时保护，又不用手动处理事件。</li>
+    </ol></div>
+
+    <table>
+      <thead><tr><th>事件类型</th><th>何时触发</th></tr></thead>
+      <tbody>
+        <tr><td><code>message_start</code></td><td>开头一次，带元数据</td></tr>
+        <tr><td><code>content_block_start / _delta / _stop</code></td><td>每个内容块的开始/增量/结束</td></tr>
+        <tr><td><code>message_delta</code></td><td>带 <code>stop_reason</code> 和 usage</td></tr>
+        <tr><td><code>message_stop</code></td><td>结尾一次</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============================ 8 ============================ -->
+  <section id="servertools">
+    <h2><span class="num">8</span>服务端工具与 pause_turn</h2>
+
+    <p>有些工具跑在 <strong>Anthropic 的基础设施上</strong>，你<strong>不需要客户端执行</strong>：声明在 <code>tools</code> 里，结果作为内容块在同一次响应里返回。最常用的是 <code>web_search</code>（让 Agent 联网）和 <code>code_execution</code>（沙箱里跑代码）。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">给 miniclaude 加联网能力</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>TOOLS = [
+    *TOOLS,                                                   # 第 4 节的自定义工具
+    {"type": "web_search_20260209", "name": "web_search"},   # 服务端：联网搜索
+]</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b>服务端工具只声明、不执行。</b>你在循环里<strong>不会</strong>看到需要你处理的 <code>web_search</code> 调用——Anthropic 替你执行，把 <code>web_search_tool_result</code> 块直接放进响应。<code>miniclaude</code> 的循环不用为它写任何分发逻辑。</li>
+      <li><b><code>web_search_20260209</code> 是带「动态过滤」的最新版</b>（Opus 4.8/4.7/4.6、Sonnet 4.6 支持）：模型会写代码先过滤搜索结果再进上下文，更准更省 token。它内部已用到代码执行，所以<strong>不要</strong>再单独声明 <code>code_execution</code>，否则两个执行环境会让模型困惑。老模型用基础版 <code>web_search_20250305</code>。</li>
+      <li><b>服务端工具的错误不抛异常。</b>它返回 HTTP 200，但结果块的 <code>content</code> 是个错误对象（如 <code>{"error_code": "max_uses_exceeded"}</code>）。成功时 <code>content</code> 是<strong>列表</strong>，错误时是<strong>对象</strong>——索引前先判断。</li>
+    </ol></div>
+
+    <h3>必须处理 <code>pause_turn</code></h3>
+    <p>服务端工具内部有自己的采样循环。如果它达到默认的 10 次迭代上限，响应会带 <code>stop_reason == "pause_turn"</code>。这<strong>不是</strong>结束，是「我暂停了，请让我接着跑」。在第 5 节循环里补一个分支：</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">在循环里处理 pause_turn</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>if resp.stop_reason == "pause_turn":
+    messages.append({"role": "assistant", "content": resp.content})
+    continue          # 原样再发一次，服务端会自动续跑——不要加「请继续」之类的 user 消息</code></pre></div>
+    </div>
+    <p class="callout warn"><span></span>不要在 <code>pause_turn</code> 后塞一条「Continue.」的 user 消息——API 检测到末尾的 <code>server_tool_use</code> 块就知道要续跑。再设一个 <code>max_continuations</code>（比如 5）防止无限循环。</p>
+  </section>
+
+  <!-- ============================ 9 ============================ -->
+  <section id="caching">
+    <h2><span class="num">9</span>Prompt Caching 与前缀铁律</h2>
+
+    <p>Agent 每一圈都把<strong>全量历史</strong>重新发一遍。一个跑了 30 轮的编码任务，前面的系统提示、工具定义、早期对话被重复处理几十次。Prompt Caching 让重复前缀以 ~0.1× 的价格命中，能省到 90%。</p>
+
+    <div class="callout note"><p><b>一条铁律解释一切：</b>Prompt Caching 是<strong>前缀匹配</strong>。前缀里任何一个字节变化，都会让它<strong>后面所有内容</strong>的缓存失效。渲染顺序固定为 <code>tools</code> → <code>system</code> → <code>messages</code>。</p></div>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">给 system 加缓存断点</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>resp = client.messages.create(
+    model=MODEL,
+    max_tokens=16000,
+    system=[{
+        "type": "text",
+        "text": SYSTEM,                       # 庞大且稳定：人格 + 工具用法 + 代码规范
+        "cache_control": {"type": "ephemeral"},
+    }],
+    tools=TOOLS,
+    messages=messages,
+)
+print(resp.usage.cache_read_input_tokens)     # 命中缓存的 token（≈0.1× 价）
+print(resp.usage.cache_creation_input_tokens) # 写入缓存的 token（≈1.25× 价）</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b><code>system</code> 改成带 <code>cache_control</code> 的块列表。</b>断点打在最后一个 system 块上，会把它<strong>前面</strong>渲染的 <code>tools</code> 和整个 system 一起缓存。多轮对话还可以把断点打在最近一轮 user 消息的最后一个内容块上，让历史前缀逐轮累积命中。</li>
+      <li><b>用 <code>usage</code> 验证命中。</b>如果 <code>cache_read_input_tokens</code> 在相同前缀的重复请求里始终为 0，说明有「静默失效源」在作怪。</li>
+    </ol></div>
+
+    <div class="callout pitfall">
+      <p><b>静默失效源——Agent 工程里最隐蔽的钱坑。</b>这些放进前缀就让缓存全废：系统提示里塞 <code>datetime.now()</code> / UUID / 用户 ID；工具集随用户变化（tools 在位置 0，一变全废）；<code>json.dumps</code> 不带 <code>sort_keys=True</code>。<strong>系统提示要冻结</strong>，动态上下文（当前时间、模式）往 <code>messages</code> 后面塞，不要插进 system 头部。会话中途别加/删工具、别换模型——都会让整个缓存重建。</p>
+    </div>
+  </section>
+
+  <!-- ============================ 10 ============================ -->
+  <section id="context">
+    <h2><span class="num">10</span>长跑：Compaction 与 Context Editing</h2>
+
+    <p>长跑 Agent 的历史会无限增长，最终撞上 1M 上下文窗口。两种官方机制，目的不同：</p>
+    <table>
+      <thead><tr><th></th><th>Compaction（压缩）</th><th>Context Editing（编辑/清除）</th></tr></thead>
+      <tbody>
+        <tr><td>做什么</td><td>把早期历史<strong>总结</strong>成一个 compaction 块</td><td>把陈旧的工具结果/思考块<strong>清除</strong>（删，不总结）</td></tr>
+        <tr><td>何时用</td><td>对话可能接近/超过窗口上限</td><td>老的工具输出已不相关，想保持轻量</td></tr>
+        <tr><td>beta header</td><td><code>compact-2026-01-12</code></td><td><code>context-management-2025-06-27</code></td></tr>
+      </tbody>
+    </table>
+
+    <h4>Compaction</h4>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">长会话开启服务端压缩</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>resp = client.beta.messages.create(
+    betas=["compact-2026-01-12"],
+    model=MODEL,
+    max_tokens=16000,
+    messages=messages,
+    context_management={"edits": [{"type": "compact_20260112"}]},
+)
+# 关键：必须把整段 response.content 追加回去，compaction 块要被保留
+messages.append({"role": "assistant", "content": resp.content})</code></pre></div>
+    </div>
+    <div class="callout pitfall">
+      <p><b>Compaction 的唯一致命坑：</b>必须把 <code>resp.content</code>（整段，含 compaction 块）追加回 <code>messages</code>，而<strong>不是</strong>只追加文本。API 靠这个 compaction 块在下一次请求时替换掉被压缩的历史；只抽文本字符串追加会<strong>静默丢失</strong>压缩状态，下一轮直接把没压缩的历史又发上去。</p>
+    </div>
+
+    <h4>Context Editing</h4>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">清除陈旧的工具结果</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>resp = client.beta.messages.create(
+    betas=["context-management-2025-06-27"],
+    model=MODEL, max_tokens=16000, tools=TOOLS, messages=messages,
+    context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
+)</code></pre></div>
+    </div>
+    <p>策略类型：<code>clear_tool_uses_20250919</code>（清旧工具结果，加 <code>clear_tool_inputs: true</code> 连参数一起清）和 <code>clear_thinking_20251015</code>（清思考块）。<strong>别</strong>把它和 compaction 的类型搞混——<code>compact_20260112</code> 是另一个功能。</p>
+
+    <p class="callout tip"><span></span>很多长跑 Agent 三个一起用：<strong>Context Editing</strong> 在会话内剪掉陈旧轮次，<strong>Compaction</strong> 在接近上限时总结，<strong>Memory</strong>（下一节）做跨会话持久化。</p>
+  </section>
+
+  <!-- ============================ 11 ============================ -->
+  <section id="memory">
+    <h2><span class="num">11</span>跨会话记忆 memory</h2>
+
+    <p>到目前为止 <code>miniclaude</code> 一关进程就失忆。Memory 工具让它把学到的东西写进一个文件目录，<strong>跨会话存活</strong>。它是<strong>客户端</strong>工具：模型发出 view/create/str_replace/insert/delete/rename 命令，你来实现存储后端。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">声明 memory 工具</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>TOOLS = [
+    *TOOLS,
+    {"type": "memory_20250818", "name": "memory"},   # 客户端工具，操作 /memories 目录
+]</code></pre></div>
+    </div>
+
+    <p>声明后，模型会用它在固定的 <code>/memories</code> 目录里读写文件。你在循环里收到 <code>memory</code> 的 <code>tool_use</code> 时，按命令读写文件并返回结果。Python SDK 提供了 <code>BetaAbstractMemoryTool</code> 辅助基类，子类化它实现六个方法即可，配合 Tool Runner 自动处理：</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">用 SDK 辅助基类实现存储后端</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from anthropic.lib.tools import BetaAbstractMemoryTool
+
+class FileMemory(BetaAbstractMemoryTool):
+    def view(self, command): ...
+    def create(self, command): ...
+    def str_replace(self, command): ...
+    def insert(self, command): ...
+    def delete(self, command): ...
+    def rename(self, command): ...
+
+runner = client.beta.messages.tool_runner(
+    model=MODEL, max_tokens=16000,
+    tools=[FileMemory(), read_file, edit_file, run_bash],
+    messages=[{"role": "user", "content": task}],
+)
+for message in runner:
+    ...</code></pre></div>
+    </div>
+
+    <div class="callout pitfall">
+      <p><b>Memory 的安全要点，必踩：</b>① 模型给的 <code>path</code> 是<strong>不可信输入</strong>，每次操作都要把它解析为规范路径并验证仍在 <code>/memories</code> 内，拒绝 <code>..</code>、符号链接、绝对路径逃逸——和第 4 节 <code>_safe_path</code> 同样的校验。② <strong>绝不</strong>在记忆文件里存 API key、密码、token。③ 多用户系统要做<strong>按用户隔离</strong>的记忆目录和鉴权——参考实现没有内置访问控制。</p>
+    </div>
+  </section>
+
+  <!-- ============================ 12 ============================ -->
+  <section id="structured">
+    <h2><span class="num">12</span>结构化输出与子代理</h2>
+
+    <h3>结构化输出：让 Agent 的产物可被程序消费</h3>
+    <p>当 Agent 要把结果交给下游代码（而不是给人读）时，用结构化输出约束 JSON 形状。推荐 <code>messages.parse()</code> + Pydantic，自动校验并返回类型化对象。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">让 Agent 返回结构化的「任务报告」</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from pydantic import BaseModel
+
+class TaskReport(BaseModel):
+    summary: str
+    files_changed: list[str]
+    tests_passed: bool
+
+resp = client.messages.parse(
+    model=MODEL,
+    max_tokens=16000,
+    messages=[{"role": "user", "content": "总结你刚才做的修改"}],
+    output_format=TaskReport,
+)
+report = resp.parsed_output          # 已校验的 TaskReport 实例
+print(report.files_changed, report.tests_passed)</code></pre></div>
+    </div>
+    <p>用 <code>messages.create</code> 时则写 <code>output_config={"format": {"type": "json_schema", "schema": {...}}}</code>。注意：旧的顶层 <code>output_format</code> 参数已废弃；结构化输出与 citations 互斥（同时用会 400）。</p>
+
+    <h3>子代理：用便宜模型做子任务，又不毁缓存</h3>
+    <p>主循环跑在 Opus 4.8 上。如果某个子任务（比如「在 200 个文件里搜一个符号」）不需要那么强的模型，<strong>不要会话中途换模型</strong>——那会让整个缓存失效。正确做法是<strong>派生一个子代理</strong>：用便宜模型（如 Haiku 4.5）单独起一次调用做子任务，主循环始终用一个模型。Claude Code 的 Explore 子代理就是这么用 Haiku 的。</p>
+    <p class="callout tip"><span></span>同理，会话中途要扩展工具集时，别直接改 <code>tools</code>（位置 0，一改全废缓存），用 <strong>Tool Search</strong> 动态发现——它是<strong>追加</strong>工具 schema 而非替换，保住缓存前缀。</p>
+  </section>
+
+  <!-- ============================ 13 ============================ -->
+  <section id="robust">
+    <h2><span class="num">13</span>错误处理、refusal 与人审</h2>
+
+    <h3>分层捕获异常，而不是一把抓</h3>
+    <p>一个 <code>except APIError</code> 会丢掉「可重试（429/5xx/网络）」和「不可重试（400/404）」的区别。按从具体到一般的顺序链式捕获：</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">健壮的请求封装</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import anthropic
+
+try:
+    resp = client.messages.create(...)
+except anthropic.NotFoundError:           # 404：多半是 model ID 写错
+    raise
+except anthropic.RateLimitError as e:     # 429：SDK 已自动退避重试；到这说明重试也耗尽
+    retry_after = int(e.response.headers.get("retry-after", "60"))
+    ...
+except anthropic.APIStatusError as e:     # 其他非 2xx
+    if e.status_code >= 500:
+        ...                               # 服务端错误，可重试
+    else:
+        raise                             # 4xx 客户端错误，不该重试
+except anthropic.APIConnectionError:      # 网络层失败
+    ...</code></pre></div>
+    </div>
+    <p class="callout note"><span></span>SDK <strong>已经</strong>自动重试 429 和 5xx（指数退避，默认 <code>max_retries=2</code>，我们在第 2 节调到了 4）。只有当你需要超出 SDK 默认行为时才手写重试逻辑。</p>
+
+    <h3>refusal：在读 content 之前就要处理</h3>
+    <p>第 5 节已经把 <code>refusal</code> 分支放在循环最前面。重申原因：安全分类器可能返回 HTTP 200 + <code>stop_reason == "refusal"</code>，且 <code>content</code> 可能为空。<code>stop_details</code> 仅在 refusal 时非空，其他 stop_reason 下是 <code>None</code>——读 <code>.category</code> 前要先判 <code>stop_reason</code>。</p>
+
+    <h3>人审：把危险动作挡在执行前</h3>
+    <p>这是手写循环（而非 Tool Runner）的核心价值。<code>run_bash</code> 可能跑 <code>rm -rf</code> 或 <code>git push</code>。在执行<strong>前</strong>插入审批门：</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">agent.py — 在分发执行前加审批</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>DANGEROUS = {"run_bash", "edit_file"}
+
+for block in resp.content:
+    if block.type != "tool_use":
+        continue
+    if block.name in DANGEROUS:
+        print(f"\n⚠️  Agent 想执行 {block.name}: {block.input}")
+        if input("批准？[y/N] ").strip().lower() != "y":
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": "用户拒绝了该操作。请换一种方式或询问用户。",
+                "is_error": True,
+            })
+            continue
+    output = DISPATCH[block.name](**block.input)
+    tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": output})</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b>审批发生在 <code>DISPATCH</code> 之前</b>——这就是「把动作提升为专用工具」（第 3 节）的回报：因为 <code>run_bash</code>/<code>edit_file</code> 是带类型参数的专用工具，你能在执行前看清它要做什么并拦下。如果一切都走一个不透明的 bash 字符串，你根本没这个把手。</li>
+      <li><b>拒绝时回 <code>is_error</code> + 有用的说明。</b>把「用户拒绝了，请换方式」喂回去，模型会调整策略，而不是傻等或崩溃。</li>
+    </ol></div>
+  </section>
+
+  <!-- ============================ 14 ============================ -->
+  <section id="integration">
+    <h2><span class="num">14</span>完整整合：能跑的 CLI agent <span class="pill core">CORE</span></h2>
+
+    <p>把前面所有东西拼成一个能跑的 <code>main.py</code>：流式 + thinking/effort + 缓存 + 工具循环 + 审批 + pause_turn + refusal + 多轮会话。这就是 <code>miniclaude</code> 的全部。</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">main.py — 完整的 miniclaude</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import anthropic
+from tools import TOOLS, DISPATCH       # 第 4 节
+
+MODEL = "claude-opus-4-8"
+client = anthropic.Anthropic(max_retries=4, timeout=600.0)
+
+SYSTEM = [{
+    "type": "text",
+    "text": (
+        "你是 miniclaude，一个在终端工作的自治编码助手。"
+        "你能读写文件、运行命令、必要时联网搜索。"
+        "修改任何文件前必须先 read_file。完成后用一两句话汇报你做了什么。"
+    ),
+    "cache_control": {"type": "ephemeral"},     # 冻结的系统提示 → 可缓存
+}]
+
+DANGEROUS = {"run_bash", "edit_file"}
+
+def step(messages):
+    """跑一圈：流式请求 + 落地工具，返回 (final_text 或 None, 是否结束)。"""
+    with client.messages.stream(
+        model=MODEL, max_tokens=16000, system=SYSTEM,
+        thinking={"type": "adaptive", "display": "summarized"},
+        output_config={"effort": "high"},
+        tools=TOOLS, messages=messages,
+    ) as stream:
+        for event in stream:
+            if event.type == "content_block_delta" and event.delta.type == "text_delta":
+                print(event.delta.text, end="", flush=True)
+        resp = stream.get_final_message()
+
+    if resp.stop_reason == "refusal":
+        return "[模型出于安全原因拒绝了请求]", True
+    if resp.stop_reason == "end_turn":
+        return next((b.text for b in resp.content if b.type == "text"), ""), True
+    if resp.stop_reason == "pause_turn":                 # 服务端工具续跑
+        messages.append({"role": "assistant", "content": resp.content})
+        return None, False
+
+    # stop_reason == "tool_use"
+    messages.append({"role": "assistant", "content": resp.content})
+    results = []
+    for block in resp.content:
+        if block.type != "tool_use":
+            continue
+        if block.name in DANGEROUS:
+            print(f"\n⚠️  执行 {block.name}: {block.input}")
+            if input("批准？[y/N] ").strip().lower() != "y":
+                results.append({"type": "tool_result", "tool_use_id": block.id,
+                                "content": "用户拒绝。请换方式。", "is_error": True})
+                continue
+        try:
+            out = DISPATCH[block.name](**block.input)
+            results.append({"type": "tool_result", "tool_use_id": block.id, "content": out})
+        except Exception as e:
+            results.append({"type": "tool_result", "tool_use_id": block.id,
+                            "content": f"失败: {e}", "is_error": True})
+    messages.append({"role": "user", "content": results})
+    return None, False
+
+def main():
+    messages = []
+    print("miniclaude 已就绪（Ctrl-C 退出）")
+    while True:
+        task = input("\n\n你 ▸ ")
+        messages.append({"role": "user", "content": task})
+        done = False
+        while not done:                                  # agentic loop
+            final, done = step(messages)
+        print(f"\n\n✓ {final}")
+
+if __name__ == "__main__":
+    main()</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b><code>step()</code> 是「一圈」。</b>它发一次流式请求、流式打印文本、用 <code>get_final_message()</code> 拿完整响应，然后按 <code>stop_reason</code> 四向分支：refusal/end_turn 结束，pause_turn 续跑，tool_use 执行工具。返回 <code>(最终文本或None, 是否结束)</code>。</li>
+      <li><b>四个 <code>stop_reason</code> 全覆盖。</b>这正是新手最常漏的——只处理 tool_use 和 end_turn，结果在服务端工具（pause_turn）或安全拒绝（refusal）上崩掉。</li>
+      <li><b>外层 <code>main()</code> 维护多轮会话。</b><code>messages</code> 跨用户输入持续累积——用户第二句话时，模型还记得第一句和中间所有工具结果。每个 <code>step</code> 都把助手响应和工具结果追加进同一个 <code>messages</code>，所以历史是连续的。</li>
+      <li><b>系统提示带 <code>cache_control</code>。</b>因为它冻结不变，几十圈循环里它和工具定义只在第一圈付全价，后续都命中缓存。</li>
+    </ol></div>
+
+    <div class="callout note">
+      <p><b>什么时候该换成 Managed Agents（路径 B）？</b>当你需要的不是「装进自己进程」，而是「让 Anthropic 替我跑循环 + 提供每会话一个沙箱容器」时：长跑研究 Agent、要把 SSE 事件流推给前端 UI、要持久化/版本化的 Agent 配置、要按会话挂载文件/仓库。那时改用 <code>client.beta.agents.create()</code> 建一个持久 Agent，再 <code>sessions.create()</code> 起会话。但只要你想掌控每次工具执行和审批，本文这套自托管循环就是对的选择。</p>
+    </div>
+  </section>
+
+  <!-- ============================ 15 ============================ -->
+  <section id="bestpractice">
+    <h2><span class="num">15</span>最佳实践清单 &amp; 速查</h2>
+
+    <h3>循环正确性（最高频的 bug）</h3>
+    <ul>
+      <li>每一圈先把<strong>整段</strong> <code>resp.content</code> 追加进 <code>messages</code>，再处理工具。</li>
+      <li>每个 <code>tool_result</code> 必带匹配的 <code>tool_use_id</code>；失败的工具也要回结果（<code>is_error: True</code>），不能丢。</li>
+      <li>一条 assistant（多 tool_use）→ <strong>一条</strong> user（多 tool_result）。别拆成多条。</li>
+      <li>四个 <code>stop_reason</code> 全处理：<code>end_turn</code> / <code>tool_use</code> / <code>pause_turn</code> / <code>refusal</code>（外加 <code>max_tokens</code>）。</li>
+      <li>读 <code>resp.content</code> 前先判 <code>refusal</code>；用 <code>next(b.text for b ... if b.type=="text")</code> 而非 <code>content[0].text</code>（开了 thinking 时首块可能是 thinking）。</li>
+    </ul>
+
+    <h3>模型参数</h3>
+    <ul>
+      <li>模型 ID 用完整即用字符串 <code>claude-opus-4-8</code>，不补日期后缀。</li>
+      <li>Thinking 用 <code>{"type": "adaptive"}</code>；要给用户看推理加 <code>"display": "summarized"</code>。<strong>不要用 <code>budget_tokens</code></strong>（4.8 上传了 400）。</li>
+      <li>Effort 在 <code>output_config</code> 里，Agent/编码任务至少 <code>high</code>，<code>xhigh</code> 最佳。</li>
+      <li>输出可能 &gt; ~16K token → 用 <code>messages.stream()</code>；非流式默认 <code>max_tokens=16000</code>，流式可给 <code>64000</code>。</li>
+    </ul>
+
+    <h3>安全</h3>
+    <ul>
+      <li><code>path</code> / <code>command</code> 是不可信输入：路径做规范化+根目录校验；命令白名单+隔离+限时+日志。</li>
+      <li>难以撤销的动作提升为专用工具并挂人审。</li>
+      <li>记忆/工具不存任何密钥；多用户做按用户隔离 + 鉴权。</li>
+    </ul>
+
+    <h3>上下文与成本</h3>
+    <ul>
+      <li>系统提示冻结、工具集稳定、JSON 确定性序列化——保住前缀缓存。</li>
+      <li>长跑用 Context Editing（剪）+ Compaction（总结），后者必须把整段 <code>content</code>（含 compaction 块）追加回去。</li>
+      <li>子任务用便宜模型时<strong>派生子代理</strong>，别在主会话里换模型/换工具集。</li>
+    </ul>
+
+    <h3>工程</h3>
+    <ul>
+      <li>用官方 SDK，别手搓 HTTP；用 SDK 的类型、流式助手、分层异常类。</li>
+      <li>不需要每步审批/日志时，用 Tool Runner 省掉整个循环。</li>
+      <li>需要托管循环 + 沙箱容器时，转 Managed Agents。</li>
+    </ul>
+
+    <hr>
+    <h3>三种构建层级速查</h3>
+    <table>
+      <thead><tr><th>需求</th><th>用什么</th></tr></thead>
+      <tbody>
+        <tr><td>分类/摘要/抽取/问答</td><td>单次 <code>messages.create</code></td></tr>
+        <tr><td>多步、但流程由你的代码主导</td><td>Workflow：<code>messages.create</code> + tool use，你控制循环</td></tr>
+        <tr><td>开放式、模型自己决定轨迹、你托管算力</td><td>本文：自写 agentic loop（最大灵活度）</td></tr>
+        <tr><td>要 Anthropic 托管循环 + 每会话沙箱容器</td><td>Managed Agents</td></tr>
+      </tbody>
+    </table>
+
+    <p class="subtitle" style="margin-top:32px">全文代码均对应 Anthropic 官方 SDK 的真实行为，模型 <code>claude-opus-4-8</code>。把 <code>miniclaude</code> 跑起来、改坏、再修好，是吃透 Agent 工程最快的路。</p>
+  </section>
+</main>
+</div>
+
+<script>
+// ---------- 轻量、安全的语法高亮（先转义，再单次正则分词，字符串/注释优先以保护其内部）----------
+(function(){
+  const PY_KW = "False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|self|cls|match|case";
+  const PY_BI = "print|len|range|int|str|float|bool|list|dict|set|tuple|open|next|input|enumerate|isinstance|super|Exception|ValueError|type";
+  const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+  function hlPython(raw){
+    const code = esc(raw);
+    const re = new RegExp(
+      "(#[^\\n]*)" +                                                    // 1 注释
+      "|((?:[fFrRbBuU]{0,2})(?:\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?'''|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*'))" + // 2 字符串
+      "|(@[A-Za-z_][\\w.]*)" +                                          // 3 装饰器
+      "|\\b(" + PY_KW + ")\\b" +                                        // 4 关键字
+      "|\\b(" + PY_BI + ")\\b" +                                        // 5 内置/常用
+      "|\\b(\\d[\\w.]*)\\b",                                            // 6 数字
+      "g"
+    );
+    return code.replace(re, (m, c, s, dec, kw, bi, num) => {
+      if (c)   return '<span class="t-com">'+c+'</span>';
+      if (s)   return '<span class="t-str">'+s+'</span>';
+      if (dec) return '<span class="t-dec">'+dec+'</span>';
+      if (kw)  return '<span class="t-kw">'+kw+'</span>';
+      if (bi)  return '<span class="t-fn">'+bi+'</span>';
+      if (num) return '<span class="t-num">'+num+'</span>';
+      return m;
+    });
+  }
+  function hlPseudo(raw){ // 伪代码：只标注释和字符串
+    const code = esc(raw);
+    return code.replace(/(#[^\n]*)|("(?:[^"\\]|\\.)*")/g,(m,c,s)=>
+      c?'<span class="t-com">'+c+'</span>':'<span class="t-str">'+s+'</span>');
+  }
+
+  document.querySelectorAll("pre[data-lang] code").forEach(el=>{
+    const lang = el.parentElement.getAttribute("data-lang");
+    const raw = el.textContent;
+    el.innerHTML = (lang==="py") ? hlPython(raw) : hlPseudo(raw);
+  });
+
+  // ---------- 复制按钮 ----------
+  document.querySelectorAll(".copybtn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const code = btn.parentElement.querySelector("code").textContent;
+      navigator.clipboard.writeText(code).then(()=>{
+        const old = btn.textContent; btn.textContent = "已复制 ✓";
+        setTimeout(()=>btn.textContent = old, 1200);
+      });
+    });
+  });
+
+  // ---------- TOC scroll-spy ----------
+  const links = [...document.querySelectorAll("nav.toc a")];
+  const map = {};
+  links.forEach(a=>{ const id=a.getAttribute("href").slice(1); const s=document.getElementById(id); if(s) map[id]=a; });
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(a=>a.classList.remove("active"));
+        const a = map[e.target.id]; if(a) a.classList.add("active");
+      }
+    });
+  }, {rootMargin:"-20% 0px -70% 0px"});
+  Object.keys(map).forEach(id=>obs.observe(document.getElementById(id)));
+
+  // ---------- 移动端目录 ----------
+  const toc = document.getElementById("toc"), tog = document.getElementById("menuToggle");
+  tog.addEventListener("click",()=>toc.classList.toggle("open"));
+  toc.addEventListener("click",e=>{ if(e.target.tagName==="A") toc.classList.remove("open"); });
+})();
+</script>
+</body>
+</html>
