@@ -131,7 +131,9 @@
   <a class="sub" href="#ag-stream">4.9 流式事件</a>
   <a class="sub" href="#ag-trace">4.10 Tracing 追踪</a>
   <a href="#mapping">5 · OpenAI ↔ Anthropic 对照</a>
-  <a href="#bestpractice">6 · 最佳实践 &amp; 速查</a>
+  <a href="#threeways">6 · 三套写法对照 ★</a>
+  <a href="#errors">7 · 错误处理与重试</a>
+  <a href="#bestpractice">8 · 最佳实践 &amp; 速查</a>
 </nav>
 <main>
   <h1>OpenAI 三套 API 完整讲解</h1>
@@ -924,8 +926,200 @@ async for event in result.stream_events():
   </section>
 
   <!-- ============================ 6 ============================ -->
+  <section id="threeways">
+    <h2><span class="num">6</span>同一个 Agent,三套写法对照 <span class="pill core">CORE</span></h2>
+    <p>把前面拆开讲的东西合起来:<strong>同一个带工具的 agentic loop,分别用 Chat / Responses / Agents SDK 写一遍</strong>。任务和工具都一样——一个 <code>get_weather(city)</code> 工具,问「北京和上海哪个更热」(模型需要并行/连续调两次)。盯住三段代码<strong>谁在管循环、谁在管历史、工具形状有何不同</strong>。把 <code>get_weather</code> 换成你真实的 <code>read_file</code>/<code>run_bash</code> 一套(参见本站 Anthropic 教程的 miniclaude),骨架一字不变。</p>
+
+    <h3>写法 A — Chat Completions(手写循环,无状态)</h3>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">agent_chat.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import json
+from openai import OpenAI
+client = OpenAI()
+
+def get_weather(city: str) -> str:
+    return f"{city}：晴 30°C" if city == "北京" else f"{city}：多云 27°C"
+
+tools = [{
+    "type": "function",
+    "function": {                                  # Chat：schema 嵌在 "function" 下
+        "name": "get_weather",
+        "description": "查询某城市当前天气",
+        "parameters": {"type": "object",
+                       "properties": {"city": {"type": "string"}},
+                       "required": ["city"], "additionalProperties": False},
+        "strict": True,
+    },
+}]
+
+messages = [{"role": "user", "content": "北京和上海哪个更热？"}]
+while True:
+    resp = client.chat.completions.create(model="gpt-5.5", messages=messages, tools=tools)
+    msg = resp.choices[0].message
+    messages.append(msg)                           # 把整条助手消息追加回历史（无状态：每轮全量重发）
+    if not msg.tool_calls:
+        print(msg.content); break
+    for call in msg.tool_calls:                     # 可能并行两次
+        args = json.loads(call.function.arguments)  # arguments 是 JSON 字符串
+        messages.append({"role": "tool", "tool_call_id": call.id,
+                         "content": get_weather(args["city"])})   # 每个结果一条 tool 消息</code></pre></div>
+    </div>
+
+    <h3>写法 B — Responses(手写循环,有状态)</h3>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">agent_responses.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import json
+from openai import OpenAI
+client = OpenAI()
+
+def get_weather(city: str) -> str: ...
+
+tools = [{
+    "type": "function",                            # Responses：扁平，name/parameters 与 type 同级
+    "name": "get_weather",
+    "description": "查询某城市当前天气",
+    "parameters": {"type": "object",
+                   "properties": {"city": {"type": "string"}},
+                   "required": ["city"], "additionalProperties": False},
+    "strict": True,
+}]
+
+resp = client.responses.create(model="gpt-5.5", input="北京和上海哪个更热？", tools=tools)
+while True:
+    calls = [it for it in resp.output if it.type == "function_call"]
+    if not calls:
+        print(resp.output_text); break
+    outputs = [{
+        "type": "function_call_output",            # Responses：用 function_call_output 回填
+        "call_id": c.call_id,
+        "output": get_weather(json.loads(c.arguments)["city"]),
+    } for c in calls]
+    resp = client.responses.create(
+        model="gpt-5.5",
+        previous_response_id=resp.id,              # 有状态：只发工具结果，不重发历史
+        input=outputs, tools=tools,
+    )</code></pre></div>
+    </div>
+
+    <h3>写法 C — Agents SDK(框架托管循环)</h3>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">agent_sdk.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import asyncio
+from agents import Agent, Runner, function_tool
+
+@function_tool
+def get_weather(city: str) -> str:
+    """查询某城市当前天气。"""
+    return f"{city}：晴 30°C" if city == "北京" else f"{city}：多云 27°C"
+
+agent = Agent(name="Weather", instructions="需要时查天气再回答。", tools=[get_weather])
+
+async def main():
+    result = await Runner.run(agent, "北京和上海哪个更热？")   # 循环、回填、并行全由 Runner 管
+    print(result.final_output)
+
+asyncio.run(main())</code></pre></div>
+    </div>
+
+    <div class="anno"><ol>
+      <li><b>循环归属:</b>A/B 你<strong>自己写 <code>while</code></strong>(换来对每步的拦截/审批/日志能力);C 由 <code>Runner</code> 托管(换来少写代码 + 内建追踪)。这正是本站 Anthropic 教程里「手写 loop vs Tool Runner」的同一权衡。</li>
+      <li><b>历史归属:</b>A 无状态,每轮把全量 <code>messages</code> 重发;B 用 <code>previous_response_id</code> 让<strong>服务端</strong>记历史,只发增量;C 框架替你管(默认每次 run 独立,跨轮用 <code>Session</code> 或 <code>to_input_list()</code>)。</li>
+      <li><b>工具形状差异(搬代码最容易错):</b>A 的 schema <strong>嵌在 <code>"function"</code> 下</strong>、结果回填用 <code>role:"tool"</code> 消息;B <strong>扁平</strong>、回填用 <code>function_call_output</code> item;C 用 <code>@function_tool</code> 从签名/docstring <strong>自动生成 schema</strong>,你完全不碰 JSON。</li>
+      <li><b><code>arguments</code> 都是 JSON 字符串</b>(A/B 都要 <code>json.loads</code>);C 帮你解析好直接当函数参数传入。</li>
+    </ol></div>
+
+    <table>
+      <thead><tr><th></th><th>A · Chat</th><th>B · Responses</th><th>C · Agents SDK</th></tr></thead>
+      <tbody>
+        <tr><td>循环</td><td>你写</td><td>你写</td><td>Runner 托管</td></tr>
+        <tr><td>历史</td><td>自带全量</td><td>服务端 <code>previous_response_id</code></td><td>框架/Session</td></tr>
+        <tr><td>工具 schema</td><td>嵌套手写</td><td>扁平手写</td><td>自动生成</td></tr>
+        <tr><td>结果回填</td><td><code>role:tool</code></td><td><code>function_call_output</code></td><td>自动</td></tr>
+        <tr><td>追踪/护栏/多智能体</td><td>自己做</td><td>自己做</td><td>内建</td></tr>
+        <tr><td>适合</td><td>最大兼容/迁移</td><td>新项目、要内置工具/推理</td><td>多智能体、要可观测</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============================ 7 ============================ -->
+  <section id="errors">
+    <h2><span class="num">7</span>错误处理与重试</h2>
+    <p>和 Anthropic 一样:用 SDK 的<strong>类型化异常</strong>,从具体到一般链式捕获,区分「可重试」(429/5xx/网络)和「不可重试」(4xx)。别用字符串匹配错误信息。</p>
+
+    <table>
+      <thead><tr><th>HTTP</th><th><code>openai.*</code> 异常类</th><th>可重试</th><th>常见原因</th></tr></thead>
+      <tbody>
+        <tr><td>400</td><td><code>BadRequestError</code></td><td>否</td><td>参数/形状错误(如工具 schema 写错)</td></tr>
+        <tr><td>401</td><td><code>AuthenticationError</code></td><td>否</td><td>API key 无效/缺失</td></tr>
+        <tr><td>403</td><td><code>PermissionDeniedError</code></td><td>否</td><td>无权访问该模型/功能</td></tr>
+        <tr><td>404</td><td><code>NotFoundError</code></td><td>否</td><td>模型 ID 写错、端点不存在</td></tr>
+        <tr><td>409</td><td><code>ConflictError</code></td><td>是(SDK 会重试)</td><td>资源冲突</td></tr>
+        <tr><td>422</td><td><code>UnprocessableEntityError</code></td><td>否</td><td>请求体语义错误</td></tr>
+        <tr><td>429</td><td><code>RateLimitError</code></td><td>是</td><td>RPM/TPM 超限</td></tr>
+        <tr><td>≥500</td><td><code>InternalServerError</code></td><td>是</td><td>服务端错误</td></tr>
+        <tr><td>网络</td><td><code>APIConnectionError</code>(含 <code>APITimeoutError</code>)</td><td>是</td><td>连接失败/超时</td></tr>
+        <tr><td>基类</td><td><code>APIStatusError</code>(非 2xx)/ <code>APIError</code></td><td>—</td><td>兜底</td></tr>
+      </tbody>
+    </table>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">errors.py — 分层捕获</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import openai
+
+try:
+    resp = client.responses.create(model="gpt-5.5", input="...")
+except openai.NotFoundError:                 # 404：多半是 model ID 写错
+    raise
+except openai.RateLimitError as e:           # 429：SDK 已自动退避重试；到这说明重试也耗尽
+    retry_after = e.response.headers.get("retry-after")
+    ...
+except openai.APIStatusError as e:           # 其他非 2xx
+    print(e.status_code, e.request_id, e.message)
+    if e.status_code >= 500:
+        ...                                  # 服务端错误，可重试
+    else:
+        raise                                # 4xx，不该重试
+except openai.APITimeoutError:               # 是 APIConnectionError 的子类，放它前面
+    ...
+except openai.APIConnectionError:            # 其他网络失败
+    ...</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b>顺序从具体到一般。</b><code>APITimeoutError</code> 是 <code>APIConnectionError</code> 的子类,要放前面;<code>APIStatusError</code> 是所有「拿到了非 2xx 响应」的基类。</li>
+      <li><b>每个异常带诊断信息:</b><code>e.status_code</code>、<code>e.request_id</code>(报障时给 OpenAI)、<code>e.message</code>、<code>e.code</code>/<code>e.type</code>(细分错误类型)、<code>e.response.headers</code>(限流头)。</li>
+    </ol></div>
+
+    <h4>SDK 自动重试与超时</h4>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">retry_config.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from openai import OpenAI
+import httpx
+
+client = OpenAI(
+    max_retries=4,        # 默认 2；自动重试 408/409/429/≥500 + 连接错误，指数退避
+    timeout=60.0,         # 单位：秒（可传 httpx.Timeout 做更细粒度控制）
+)
+
+# 也可对单次请求覆盖（不改全局客户端）
+resp = client.with_options(max_retries=5, timeout=20.0).responses.create(...)</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b>默认就会重试。</b>SDK 对 408/409/429/≥500 和连接错误自动指数退避重试,默认 <code>max_retries=2</code>。只有需要超出默认行为时才手写重试。</li>
+      <li><b>限流(429)看 <code>retry-after</code>。</b>SDK 会读这个头自动等待;你自己处理时也按它退避。响应头还有 <code>x-ratelimit-remaining-requests</code>/<code>...-tokens</code> 可用于预算。</li>
+      <li><b>超时单位是秒</b>(对照 Anthropic Python 也是秒、TS 是毫秒)。高 <code>max_tokens</code> 用流式避免超时。</li>
+    </ol></div>
+
+    <h4>流式里的错误 & Agents SDK 的异常</h4>
+    <ul>
+      <li><b>流式</b>:错误可能在流中途以 <code>error</code> 事件出现(如 <code>InternalServerError</code>/限流),用 <code>with</code>/迭代时会以上述异常抛出,照样分层捕获。</li>
+      <li><b>Agents SDK</b> 在这些底层异常之上还有自己的一层:<code>MaxTurnsExceeded</code>(超 <code>max_turns</code>)、<code>ModelBehaviorError</code>(模型输出畸形)、<code>InputGuardrailTripwireTriggered</code>/<code>OutputGuardrailTripwireTriggered</code>(护栏触发,见 4.7)。底层的 <code>RateLimitError</code> 等仍会照常冒上来。</li>
+    </ul>
+    <p class="callout note"><span></span>对照 Anthropic:异常体系几乎一一对应(<code>RateLimitError</code>/<code>NotFoundError</code>/<code>APIConnectionError</code>/<code>APIStatusError</code> 同名同义),迁移时把 <code>anthropic.</code> 换成 <code>openai.</code> 即可,链式捕获的结构不变。</p>
+  </section>
+
+  <!-- ============================ 8 ============================ -->
   <section id="bestpractice">
-    <h2><span class="num">6</span>最佳实践 &amp; 速查</h2>
+    <h2><span class="num">8</span>最佳实践 &amp; 速查</h2>
 
     <h3>选型</h3>
     <ul>
