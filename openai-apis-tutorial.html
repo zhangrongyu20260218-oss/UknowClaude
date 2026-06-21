@@ -133,7 +133,8 @@
   <a href="#mapping">5 · OpenAI ↔ Anthropic 对照</a>
   <a href="#threeways">6 · 三套写法对照 ★</a>
   <a href="#errors">7 · 错误处理与重试</a>
-  <a href="#bestpractice">8 · 最佳实践 &amp; 速查</a>
+  <a href="#rag">8 · RAG / 向量库 / 自动缓存 ★</a>
+  <a href="#bestpractice">9 · 最佳实践 &amp; 速查</a>
 </nav>
 <main>
   <h1>OpenAI 三套 API 完整讲解</h1>
@@ -1118,8 +1119,81 @@ resp = client.with_options(max_retries=5, timeout=20.0).responses.create(...)</c
   </section>
 
   <!-- ============================ 8 ============================ -->
+  <section id="rag">
+    <h2><span class="num">8</span>RAG / 向量库 / 自动缓存 <span class="pill new">实操</span></h2>
+    <p>让模型基于<strong>你的私有数据</strong>回答,就是 RAG(检索增强生成)。两步:<strong>索引</strong>(把文档变成可检索的向量)+ <strong>检索增强生成</strong>(把相关片段拼进上下文再生成)。OpenAI 给了两条路:自己用 Embeddings 管检索,或用托管的 Vector Store + <code>file_search</code>。</p>
+
+    <h3 id="rag-embed">8.1 Embeddings:自管 RAG 的地基</h3>
+    <p>Embedding 把文本变成向量,语义相近的文本向量也相近。检索 = 求 query 向量与文档向量的最近邻。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">embeddings.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from openai import OpenAI
+client = OpenAI()
+
+# 1) 离线索引：把每个文档块算成向量，存进你的向量库（pgvector / faiss / 任意）
+chunks = ["第一段...", "第二段...", "第三段..."]
+emb = client.embeddings.create(model="text-embedding-3-small", input=chunks)
+vectors = [d.embedding for d in emb.data]          # 与 chunks 一一对应
+your_store.upsert(chunks, vectors)                 # 你的存储
+
+# 2) 在线检索：把问题也算成向量，取最近的 k 段，拼进 prompt
+q = client.embeddings.create(model="text-embedding-3-small", input="用户的问题").data[0].embedding
+context = your_store.search(q, k=5)                 # 返回最相关的若干 chunk
+
+resp = client.responses.create(
+    model="gpt-5.5",
+    instructions="只依据下面提供的资料回答；资料没有就说不知道。",
+    input=f"资料：\n{context}\n\n问题：用户的问题",
+)
+print(resp.output_text)</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>client.embeddings.create(model, input)</code></b>:<code>input</code> 可批量(列表);返回 <code>data[i].embedding</code> 是浮点向量。模型 <code>text-embedding-3-small</code>(便宜)/ <code>-3-large</code>(更准),可用 <code>dimensions=</code> 降维省存储。</li>
+      <li><b>向量库是你的。</b>OpenAI 只负责「文本→向量」;存储与最近邻检索用 pgvector / faiss / Milvus 等你自己选。这条路<strong>可控、可跨厂商、可省钱</strong>,但要自己运维检索。</li>
+      <li><b>把检索到的片段当资料放进 <code>input</code></b>,并在 <code>instructions</code> 里约束「只依据资料回答」,降低幻觉。这一步对 Chat / Responses 都一样。</li>
+    </ol></div>
+
+    <h3 id="rag-vs">8.2 托管 RAG:Vector Store + <code>file_search</code></h3>
+    <p>不想自己管检索,就用 OpenAI 托管的向量库:上传文件→自动切块/索引→在 Responses 里挂 <code>file_search</code> 工具,检索由服务端自动完成(<code>file_search</code> 就是 §3.5 那个内置工具,这里讲完整链路)。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">vector_store.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code># 1) 建向量库（较新 SDK 在 client.vector_stores；早期在 client.beta.vector_stores）
+vs = client.vector_stores.create(name="产品手册")
+
+# 2) 上传文件并等待索引完成（切块/embedding 都由服务端做）
+client.vector_stores.files.upload_and_poll(
+    vector_store_id=vs.id,
+    file=open("manual.pdf", "rb"),
+)
+
+# 3) 在 Responses 里挂 file_search，检索自动发生
+resp = client.responses.create(
+    model="gpt-5.5",
+    input="退货政策是怎样的？",
+    tools=[{"type": "file_search", "vector_store_ids": [vs.id], "max_num_results": 5}],
+)
+print(resp.output_text)
+# 命中的来源在 output 的 message item 的 annotations 里（带文件引用）</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>vector_stores.create</code> → <code>files.upload_and_poll</code></b>:上传即自动切块 + 向量化 + 建索引,<code>upload_and_poll</code> 会阻塞到索引就绪。一个向量库可放很多文件,跨多次请求复用。</li>
+      <li><b><code>{"type":"file_search","vector_store_ids":[...]}</code></b>:声明即用,OpenAI 在生成前自动检索 top-k 片段喂给模型。<code>max_num_results</code> 控返回条数。</li>
+      <li><b>引用来源</b>在响应 <code>message</code> item 的 <code>annotations</code> 里,可在 UI 标注「出处」。≈ Anthropic <code>web_search</code> 的 citations。</li>
+      <li><b>自管 vs 托管:</b>自管(Embeddings)= 可控/跨厂商/省钱但要运维;托管(Vector Store)= 省事/集成度高但绑定 OpenAI 且按存储计费。原型用托管,规模化常转自管。</li>
+    </ol></div>
+
+    <h3 id="rag-cache">8.3 顺带两件省钱事:自动缓存 与 Batch</h3>
+    <div class="callout tip">
+      <p><b>自动 prompt caching(无需配置)。</b>OpenAI 对足够长(通常 &gt;1024 token)的<strong>稳定前缀自动缓存</strong>,命中部分按更低价计,无需任何参数。要点和 Anthropic 一样:<strong>把稳定内容(系统指令、检索资料模板、few-shot)放在前面,把每次变化的内容(用户问题)放在最后</strong>。命中量看 <code>resp.usage</code> 里的 <code>...cached_tokens</code>(Chat: <code>prompt_tokens_details.cached_tokens</code>)。区别于 Anthropic 需手动打 <code>cache_control</code> 断点——OpenAI 这步是自动的。</p>
+    </div>
+    <div class="callout note">
+      <p><b>Batch API(非实时任务 5 折)。</b>把大量请求写成 JSONL 上传,异步在 24h 内完成,价格<strong>半价</strong>。适合离线评测、批量抽取/打标、给整个知识库做 embedding。流程:<code>client.files.create(purpose="batch")</code> 传 JSONL → <code>client.batches.create(input_file_id=..., endpoint="/v1/responses", completion_window="24h")</code> → 轮询 <code>client.batches.retrieve(id)</code> 到 <code>completed</code> → 下载结果文件。结果<strong>无序</strong>,用每行的 <code>custom_id</code> 对回。≈ Anthropic 的 Message Batches。</p>
+    </div>
+  </section>
+
+  <!-- ============================ 9 ============================ -->
   <section id="bestpractice">
-    <h2><span class="num">8</span>最佳实践 &amp; 速查</h2>
+    <h2><span class="num">9</span>最佳实践 &amp; 速查</h2>
 
     <h3>选型</h3>
     <ul>
