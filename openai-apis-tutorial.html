@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenAI 三套 API 完整讲解 · Chat Completions / Responses / Agents SDK · 资深程序员向</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel2:#1b1f2a; --fg:#e6e9ef; --muted:#9aa3b2;
+    --accent:#10a37f; --accent2:#7aa2f7; --line:#272c38; --code-bg:#11141b;
+    --kw:#c678dd; --str:#98c379; --num:#d19a66; --com:#5c6370; --fn:#61afef; --punct:#abb2bf;
+    --ok:#2ea043; --warn:#d29922; --danger:#f85149;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;line-height:1.75}
+  .layout{display:flex;max-width:1500px;margin:0 auto}
+  nav.toc{width:330px;flex:0 0 330px;position:sticky;top:0;align-self:flex-start;height:100vh;
+    overflow-y:auto;border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav.toc h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:4px 10px;border-radius:6px;
+    font-size:13px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--fg);background:var(--panel2)}
+  nav.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--panel2)}
+  nav.toc a.sub{padding-left:22px;font-size:12.5px}
+  nav.toc .brand{font-weight:700;font-size:17px;color:var(--fg);margin-bottom:4px}
+  nav.toc .brand small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:4px}
+  main{flex:1 1 auto;min-width:0;padding:40px 56px 120px;max-width:1000px}
+  h1{font-size:32px;line-height:1.25;margin:0 0 8px}
+  .subtitle{color:var(--muted);font-size:16px;margin:0 0 28px}
+  section{padding-top:46px;margin-top:-24px}
+  section>h2{font-size:25px;border-bottom:1px solid var(--line);padding-bottom:10px;margin:8px 0 18px}
+  section>h2 .num{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:19px;margin:30px 0 10px;color:#f0f2f6}
+  h4{font-size:15.5px;margin:20px 0 8px;color:var(--accent2)}
+  p{margin:12px 0}
+  a{color:var(--accent2)}
+  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    font-size:.88em;background:var(--panel2);padding:2px 6px;border-radius:5px;color:#9ad9c3}
+  ul,ol{padding-left:24px}
+  li{margin:6px 0}
+  strong{color:#fff}
+  hr{border:none;border-top:1px solid var(--line);margin:32px 0}
+  .lead{font-size:17px;color:#cfd6e1;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:16px 18px}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;background:var(--panel)}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600}
+  td code{background:var(--code-bg)}
+  tr:hover td{background:var(--panel2)}
+  .callout{border-radius:10px;padding:14px 16px 14px 46px;margin:18px 0;position:relative;border:1px solid var(--line);font-size:15px}
+  .callout::before{position:absolute;left:14px;top:13px;font-size:18px;font-weight:700}
+  .callout.note{background:rgba(122,162,247,.08);border-color:rgba(122,162,247,.35)}
+  .callout.note::before{content:"ℹ";color:var(--accent2)}
+  .callout.tip{background:rgba(46,160,67,.08);border-color:rgba(46,160,67,.35)}
+  .callout.tip::before{content:"✓";color:var(--ok)}
+  .callout.warn{background:rgba(210,153,34,.08);border-color:rgba(210,153,34,.4)}
+  .callout.warn::before{content:"⚠";color:var(--warn)}
+  .callout.pitfall{background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.4)}
+  .callout.pitfall::before{content:"✕";color:var(--danger)}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .codewrap{margin:16px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--code-bg)}
+  .codehead{display:flex;align-items:center;background:var(--panel2);border-bottom:1px solid var(--line);
+    padding:7px 14px;font-size:12.5px;color:var(--muted)}
+  .codehead .fname{color:#cdd3df;font-family:"SF Mono",ui-monospace,monospace}
+  .codehead .lang{margin-left:auto;color:var(--com);font-size:11.5px}
+  .panes{position:relative}
+  pre{margin:0;padding:16px 18px;overflow-x:auto;font-size:13.3px;line-height:1.62;
+    font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre code{background:none;padding:0;color:#c9d1e0;font-size:inherit}
+  .copybtn{position:absolute;top:7px;right:8px;background:var(--panel2);color:var(--muted);
+    border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;z-index:2}
+  .copybtn:hover{color:var(--fg);border-color:var(--accent)}
+  .t-kw{color:var(--kw)} .t-str{color:var(--str)} .t-num{color:var(--num)}
+  .t-com{color:var(--com);font-style:italic} .t-fn{color:var(--fn)} .t-dec{color:var(--accent2)}
+  .anno{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 18px;margin:14px 0}
+  .anno li{margin:9px 0}
+  .anno code{background:var(--code-bg)}
+  .anno b{color:var(--accent)}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);
+    color:var(--muted);background:var(--panel2);margin-left:8px;vertical-align:middle}
+  .pill.core{color:var(--ok);border-color:rgba(46,160,67,.4)}
+  .pill.new{color:var(--accent);border-color:rgba(16,163,127,.45)}
+  .menu-toggle{display:none}
+  @media(max-width:980px){
+    nav.toc{position:fixed;left:0;top:0;z-index:50;transform:translateX(-100%);transition:transform .2s;width:300px;flex-basis:300px}
+    nav.toc.open{transform:translateX(0)}
+    main{padding:64px 20px 100px}
+    .menu-toggle{display:block;position:fixed;top:12px;left:12px;z-index:60;background:var(--accent);
+      color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer}
+  }
+</style>
+</head>
+<body>
+<button class="menu-toggle" id="menuToggle">☰ 目录</button>
+<div class="layout">
+<nav class="toc" id="toc">
+  <div class="brand">OpenAI 三套 API 完整讲解
+    <small>Chat Completions · Responses · Agents SDK · 资深程序员向</small>
+  </div>
+  <h2>正文</h2>
+  <a href="#overview">1 · 三套 API 的关系与选型</a>
+  <a href="#chat">2 · Chat Completions API</a>
+  <a class="sub" href="#chat-basic">2.1 客户端与最小请求</a>
+  <a class="sub" href="#chat-roles">2.2 messages / roles</a>
+  <a class="sub" href="#chat-resp">2.3 响应 / finish_reason / usage</a>
+  <a class="sub" href="#chat-stream">2.4 流式与增量 arguments</a>
+  <a class="sub" href="#chat-tools">2.5 函数调用循环</a>
+  <a class="sub" href="#chat-structured">2.6 结构化输出</a>
+  <a href="#responses">3 · Responses API ★</a>
+  <a class="sub" href="#resp-why">3.1 为什么有 Responses</a>
+  <a class="sub" href="#resp-basic">3.2 input / output / output_text</a>
+  <a class="sub" href="#resp-items">3.3 输出是「item 列表」</a>
+  <a class="sub" href="#resp-state">3.4 有状态：previous_response_id</a>
+  <a class="sub" href="#resp-builtin">3.5 内置工具</a>
+  <a class="sub" href="#resp-fc">3.6 函数调用与 call_id</a>
+  <a class="sub" href="#resp-reasoning">3.7 推理模型与 effort</a>
+  <a class="sub" href="#resp-structured">3.8 结构化输出</a>
+  <a class="sub" href="#resp-stream">3.9 语义化流式事件 ★</a>
+  <a href="#agents">4 · Agents SDK ★</a>
+  <a class="sub" href="#ag-model">4.1 心智模型：Agent + Runner</a>
+  <a class="sub" href="#ag-define">4.2 定义 Agent</a>
+  <a class="sub" href="#ag-tools">4.3 @function_tool</a>
+  <a class="sub" href="#ag-run">4.4 运行与 RunResult</a>
+  <a class="sub" href="#ag-hosted">4.5 托管工具 / agent.as_tool</a>
+  <a class="sub" href="#ag-handoff">4.6 Handoffs 多智能体</a>
+  <a class="sub" href="#ag-guard">4.7 Guardrails 护栏</a>
+  <a class="sub" href="#ag-session">4.8 Sessions 会话记忆</a>
+  <a class="sub" href="#ag-stream">4.9 流式事件</a>
+  <a class="sub" href="#ag-trace">4.10 Tracing 追踪</a>
+  <a href="#mapping">5 · OpenAI ↔ Anthropic 对照</a>
+  <a href="#bestpractice">6 · 最佳实践 &amp; 速查</a>
+</nav>
+<main>
+  <h1>OpenAI 三套 API 完整讲解</h1>
+  <p class="subtitle">Chat Completions / Responses / Agents SDK,逐行讲解 + 最佳实践 + 与 Anthropic 的横向对照。写给会 HTTP/SDK 的资深程序员。主线 Python 官方 SDK <code>openai</code> 与 <code>openai-agents</code>。示例模型用官方 README 当前示例 <code>gpt-5.5</code>(请按你的可用模型替换)。</p>
+
+  <div class="lead">
+    <p style="margin:0">OpenAI 现在有<strong>三个层级</strong>的接口,很多人混用导致踩坑:<strong>Chat Completions</strong> 是经典的、无状态的、跨厂商事实标准;<strong>Responses</strong> 是新一代、<strong>有状态</strong>、内置工具与推理、流式是语义化事件;<strong>Agents SDK</strong> 是架在 Responses 之上的多智能体<strong>编排框架</strong>(Agent + Runner + handoffs + guardrails + sessions + tracing)。本文把三套的请求/响应/流式/工具/结构化输出全部拆开,并不断和 Anthropic 的对应概念对照,方便你迁移心智。</p>
+  </div>
+
+  <div class="callout warn">
+    <p><b>关于版本与命名。</b>OpenAI 的模型名(如 <code>gpt-5.5</code>)、内置工具的 <code>type</code> 字符串、以及 <code>.parse</code> 是否还在 <code>beta</code> 命名空间,都在快速演进。本文锁定<strong>形状与心智模型</strong>(这些稳定),具体的模型字符串和工具版本号请以你写代码当天的官方文档为准。凡是易变处都会标注。</p>
+  </div>
+
+  <!-- ============================ 1 ============================ -->
+  <section id="overview">
+    <h2><span class="num">1</span>三套 API 的关系与选型</h2>
+
+    <p>先建立一张总图。三者不是平行的三选一,而是<strong>分层</strong>的:</p>
+
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">分层关系</span><span class="lang">map</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="flow"><code>┌──────────────────────────────────────────────┐
+│  Agents SDK (openai-agents)                    │  多智能体编排：Agent + Runner
+│  Agent / Runner / handoffs / guardrails /      │  + 工具循环 + 路由 + 护栏 + 会话 + 追踪
+│  sessions / tracing                            │  —— 默认跑在 Responses 之上
+└───────────────┬──────────────────────────────┘
+                │ 默认调用
+┌───────────────▼──────────────────────────────┐
+│  Responses API (client.responses)             │  新一代「单次/多轮」接口
+│  有状态 · 内置工具 · 推理 · 语义化流式          │  OpenAI 主推，建议新项目首选
+└───────────────────────────────────────────────┘
+┌───────────────────────────────────────────────┐
+│  Chat Completions (client.chat.completions)    │  经典、无状态、跨厂商兼容
+│  生态最广、最多第三方复刻它的形状                │  老项目 / 需要最大兼容性时用
+└───────────────────────────────────────────────┘</code></pre></div>
+    </div>
+
+    <table>
+      <thead><tr><th>维度</th><th>Chat Completions</th><th>Responses</th><th>Agents SDK</th></tr></thead>
+      <tbody>
+        <tr><td>层级</td><td>底层 HTTP 接口</td><td>底层 HTTP 接口(新)</td><td>框架(在 Responses 之上)</td></tr>
+        <tr><td>状态</td><td>无状态,自带全量 <code>messages</code></td><td><strong>可有状态</strong>,<code>previous_response_id</code> 串接</td><td>Sessions 自动管理历史</td></tr>
+        <tr><td>输入字段</td><td><code>messages</code>(角色数组)</td><td><code>input</code>(字符串或 item 列表)+ <code>instructions</code></td><td><code>Runner.run(agent, input)</code></td></tr>
+        <tr><td>输出</td><td><code>choices[0].message</code></td><td><code>output</code>(item 列表)+ <code>output_text</code></td><td><code>result.final_output</code></td></tr>
+        <tr><td>内置工具</td><td>无(只有函数调用)</td><td>web_search / file_search / code_interpreter / computer / MCP</td><td>同 Responses,封装成工具类</td></tr>
+        <tr><td>流式</td><td><code>delta</code> 增量(token 级)</td><td><strong>语义化事件</strong> <code>response.*</code></td><td>三类高层事件 + 透传 Responses 事件</td></tr>
+        <tr><td>多智能体</td><td>自己写编排</td><td>自己写编排</td><td>handoffs / agent.as_tool 原生支持</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout tip">
+      <p><b>选型一句话:</b>新项目、要内置工具/推理/有状态 → <strong>Responses</strong>;要做多智能体/护栏/可观测 → <strong>Agents SDK</strong>;只需要最大兼容性或迁移老代码 → <strong>Chat Completions</strong>。下文每套都讲透,但 Responses 与 Agents SDK 是重点(★)。</p>
+    </div>
+
+    <h4>和 Anthropic 的快速对应(便于迁移)</h4>
+    <table>
+      <thead><tr><th>概念</th><th>OpenAI</th><th>Anthropic</th></tr></thead>
+      <tbody>
+        <tr><td>经典无状态接口</td><td>Chat Completions</td><td>Messages API(<code>messages.create</code>)</td></tr>
+        <tr><td>新一代/推理接口</td><td>Responses</td><td>仍是 Messages API(thinking/effort)</td></tr>
+        <tr><td>有状态多轮</td><td><code>previous_response_id</code> / Conversations</td><td>无服务端会话,自己带 <code>messages</code>(或 Managed Agents 会话)</td></tr>
+        <tr><td>Agent 框架</td><td>Agents SDK(<code>agents</code>)</td><td>Claude Agent SDK / 自写 agentic loop / Managed Agents</td></tr>
+        <tr><td>函数调用回填键</td><td><code>tool_call_id</code> / <code>call_id</code></td><td><code>tool_use_id</code></td></tr>
+        <tr><td>工具参数流式</td><td><code>arguments</code> 增量字符串</td><td><code>input_json_delta</code>(<code>partial_json</code>)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============================ 2 ============================ -->
+  <section id="chat">
+    <h2><span class="num">2</span>Chat Completions API</h2>
+    <p>从最经典的讲起。它是无状态的「一进一出」:你把整段对话(角色数组)发上去,拿回一条助手消息。生态里大量第三方接口复刻了它的形状,所以即使你主用 Responses,也得懂它。</p>
+
+    <h3 id="chat-basic">2.1 客户端与最小请求</h3>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">chat_basic.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from openai import OpenAI
+
+client = OpenAI()                       # 从环境变量 OPENAI_API_KEY 读取密钥
+
+completion = client.chat.completions.create(
+    model="gpt-5.5",
+    messages=[
+        {"role": "developer", "content": "你是简洁的编码助手。"},
+        {"role": "user", "content": "怎么判断一个 Python 对象是某个类的实例？"},
+    ],
+)
+
+print(completion.choices[0].message.content)
+print(completion.choices[0].finish_reason)   # "stop"
+print(completion.usage.total_tokens)</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>OpenAI()</code></b> 不传 key 是推荐写法,SDK 从环境变量 <code>OPENAI_API_KEY</code> 读取。别硬编码密钥。还可配 <code>OpenAI(timeout=..., max_retries=...)</code>(SDK 默认重试 429/5xx)。</li>
+      <li><b><code>messages</code> 是角色数组。</b>每条 <code>{"role", "content"}</code>。这与 Anthropic 的 <code>messages</code> 几乎一致,最大差别:OpenAI 的<strong>系统提示放在 messages 里</strong>(一条 <code>system</code>/<code>developer</code> 消息),而 Anthropic 是顶层 <code>system</code> 参数。</li>
+      <li><b><code>choices[0].message.content</code></b> 取回复文本。<code>choices</code> 是数组(历史上支持 <code>n&gt;1</code> 生成多条),默认取第 0 条。</li>
+      <li><b><code>finish_reason</code></b> 是 Chat 版的「停止原因」(类比 Anthropic 的 <code>stop_reason</code>),取值见 2.3。</li>
+    </ol></div>
+
+    <h3 id="chat-roles">2.2 messages / roles:system 还是 developer</h3>
+    <p>角色有四种:<code>system</code> / <code>developer</code> / <code>user</code> / <code>assistant</code>(工具结果用 <code>tool</code>,见 2.5)。一个容易踩的点:</p>
+    <div class="callout note">
+      <p><b><code>developer</code> vs <code>system</code>。</b>较新的模型(尤其推理/o 系列与 GPT-5 家族)推荐用 <code>developer</code> 角色承载「开发者指令」,它在指令优先级体系里高于 <code>user</code>、低于平台。旧模型用 <code>system</code>。多数情况下两者可互换;写新代码用 <code>developer</code>,迁移老代码看模型文档。Anthropic 没有这个区分(只有顶层 <code>system</code> + 4.8 的会话内 system 消息)。</p>
+    </div>
+
+    <h3 id="chat-resp">2.3 响应结构 / finish_reason / usage</h3>
+    <table>
+      <thead><tr><th><code>finish_reason</code></th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td><code>stop</code></td><td>正常结束(或命中 <code>stop</code> 序列)</td></tr>
+        <tr><td><code>length</code></td><td>撞到 <code>max_tokens</code>/<code>max_completion_tokens</code>,输出被截断</td></tr>
+        <tr><td><code>tool_calls</code></td><td>模型要调函数,去执行并回填(2.5)</td></tr>
+        <tr><td><code>content_filter</code></td><td>被内容过滤拦截</td></tr>
+      </tbody>
+    </table>
+    <p><code>completion.usage</code> 带 <code>prompt_tokens</code> / <code>completion_tokens</code> / <code>total_tokens</code>。推理模型还会在 <code>completion_tokens_details.reasoning_tokens</code> 里报告思考用量——它<strong>计费但不返回内容</strong>。</p>
+    <p class="callout warn"><span></span>推理模型上别再用 <code>max_tokens</code>,改用 <code>max_completion_tokens</code>(它同时涵盖推理 token + 可见输出);<code>max_tokens</code> 在这些模型上被弃用。</p>
+
+    <h3 id="chat-stream">2.4 流式与增量 arguments</h3>
+    <p><code>stream=True</code> 后,响应变成一串 chunk,每个 chunk 的 <code>choices[0].delta</code> 带增量。文本增量在 <code>delta.content</code>;<strong>工具调用的参数也是增量字符串</strong>——这正是和 Anthropic <code>input_json_delta</code> 一样的设计。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">chat_stream.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>stream = client.chat.completions.create(
+    model="gpt-5.5",
+    messages=[{"role": "user", "content": "写一首关于递归的俳句"}],
+    stream=True,
+    stream_options={"include_usage": True},     # 末尾追加一个带 usage 的 chunk
+)
+
+tool_args = {}                                  # index -> 累积中的 arguments 字符串
+for chunk in stream:
+    delta = chunk.choices[0].delta if chunk.choices else None
+    if delta and delta.content:
+        print(delta.content, end="", flush=True)            # 文本增量
+    if delta and delta.tool_calls:                          # 工具调用增量
+        for tc in delta.tool_calls:
+            buf = tool_args.setdefault(tc.index, {"name": "", "args": ""})
+            if tc.function.name:
+                buf["name"] = tc.function.name              # 名字只在首个 chunk 出现
+            if tc.function.arguments:
+                buf["args"] += tc.function.arguments        # arguments 是碎片，累积</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>delta.content</code></b> 是文本碎片,直接拼接打印。</li>
+      <li><b>工具调用按 <code>tc.index</code> 累积。</b>和 Anthropic 一样:<strong>函数名只在第一个 chunk 给一次</strong>,之后 <code>function.arguments</code> 是 JSON 字符串<strong>碎片</strong>,你按 <code>index</code> 拼起来,流结束后再 <code>json.loads</code>。这就是「为什么没有 tool_call 整体 delta」——变化的只有 arguments 这个字段。</li>
+      <li><b><code>stream_options={"include_usage": True}</code></b> 才会在最后给一个带 <code>usage</code> 的 chunk(默认流式不报 usage)。这一点常被忽略。</li>
+      <li><b><code>chunk.choices</code> 可能为空</b>(比如最后那个 usage-only chunk),要先判空再索引。</li>
+    </ol></div>
+
+    <h3 id="chat-tools">2.5 函数调用循环</h3>
+    <p>这是 Chat Completions 的核心循环,和我们在 Anthropic 教程里手写的 agentic loop 同构,只是字段名不同。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">chat_tools.py — 完整函数调用循环</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import json
+
+tools = [{
+    "type": "function",
+    "function": {                                 # Chat 版：schema 嵌在 "function" 下
+        "name": "get_weather",
+        "description": "查询某城市当前天气",
+        "parameters": {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"],
+            "additionalProperties": False,
+        },
+        "strict": True,                           # 保证参数严格符合 schema
+    },
+}]
+
+messages = [{"role": "user", "content": "北京现在天气怎么样？"}]
+
+while True:
+    resp = client.chat.completions.create(
+        model="gpt-5.5", messages=messages, tools=tools,
+    )
+    msg = resp.choices[0].message
+    messages.append(msg)                          # 关键：把整条助手消息追加回历史
+
+    if not msg.tool_calls:                         # 没有工具调用 = 收尾
+        print(msg.content)
+        break
+
+    for call in msg.tool_calls:                    # 可能并行多个
+        args = json.loads(call.function.arguments)  # arguments 是 JSON 字符串，必须解析
+        result = lookup_weather(args["city"])       # 你的实现
+        messages.append({
+            "role": "tool",                         # 工具结果是一条 role=tool 的消息
+            "tool_call_id": call.id,                # 必须对上 call.id
+            "content": result,
+        })</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b>工具定义形状:</b><code>{"type":"function","function":{name,description,parameters,strict}}</code>——注意 schema <strong>嵌在 <code>"function"</code> 键下</strong>(这是 Chat 与 Responses 的一个关键差异,Responses 是扁平的,见 3.6)。<code>tool_choice</code> 可选 <code>"auto"</code>/<code>"none"</code>/<code>"required"</code>/<code>{"type":"function","function":{"name":...}}</code>。</li>
+      <li><b><code>messages.append(msg)</code></b> 把<strong>整条</strong>助手消息(含 <code>tool_calls</code>)追加回去,否则下一轮模型看不到自己发的调用。等价于 Anthropic 里「先追加 resp.content」。</li>
+      <li><b><code>call.function.arguments</code> 是 JSON 字符串,不是对象</b>——必须 <code>json.loads</code>。这是和 Anthropic <code>block.input</code>(SDK 已解析成 dict)的一个差异:Chat 给你的是字符串。</li>
+      <li><b>每个结果是一条 <code>role="tool"</code> 消息</b>,带 <code>tool_call_id</code> 对上调用的 <code>id</code>。注意和 Anthropic 的差别:Anthropic 把所有 <code>tool_result</code> 放进<strong>一条</strong> user 消息;OpenAI 是<strong>每个工具结果一条独立的 tool 消息</strong>。</li>
+      <li><b>循环以 <code>finish_reason/tool_calls</code> 为信号</b>:没有 <code>tool_calls</code> 就收尾。失败时把错误文本放进 tool 消息回填,让模型自愈(可加自定义字段说明)。</li>
+    </ol></div>
+
+    <h3 id="chat-structured">2.6 结构化输出</h3>
+    <p>两种力度:<code>response_format</code> 约束整段回复为某个 JSON Schema;或用 SDK 的 <code>.parse()</code> + Pydantic 直接拿到类型化对象。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">chat_structured.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from pydantic import BaseModel
+
+class Contact(BaseModel):
+    name: str
+    email: str
+    plan: str
+
+# 方式 A：SDK 帮你下发 schema 并解析（推荐）
+resp = client.chat.completions.parse(           # 较新 SDK；早期在 client.beta.chat.completions.parse
+    model="gpt-5.5",
+    messages=[{"role": "user", "content": "抽取：张三 zhangsan@x.com 企业版"}],
+    response_format=Contact,                     # 直接传 Pydantic 类
+)
+contact = resp.choices[0].message.parsed         # 已校验的 Contact 实例
+
+# 方式 B：手写 json_schema
+resp = client.chat.completions.create(
+    model="gpt-5.5",
+    messages=[...],
+    response_format={
+        "type": "json_schema",
+        "json_schema": {
+            "name": "contact",
+            "schema": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "email": {"type": "string"}},
+                "required": ["name", "email"],
+                "additionalProperties": False,
+            },
+            "strict": True,
+        },
+    },
+)</code></pre></div>
+    </div>
+    <p class="callout tip"><span></span><code>strict: True</code> + <code>additionalProperties: False</code> + 所有字段进 <code>required</code> 是结构化输出的硬性要求(可选字段用 <code>"type": ["string","null"]</code> 表达)。被拒(安全)或截断(<code>length</code>)时输出可能不符合 schema,要判 <code>finish_reason</code>。</p>
+  </section>
+
+  <!-- ============================ 3 ============================ -->
+  <section id="responses">
+    <h2><span class="num">3</span>Responses API <span class="pill new">新一代</span></h2>
+
+    <h3 id="resp-why">3.1 为什么有 Responses:与 Chat 的形状差异</h3>
+    <p>Responses 不是 Chat 的小改款,而是为「Agent 时代」重设计的接口。核心差异:</p>
+    <table>
+      <thead><tr><th></th><th>Chat Completions</th><th>Responses</th></tr></thead>
+      <tbody>
+        <tr><td>系统提示</td><td>messages 里一条 system/developer</td><td>顶层 <code>instructions</code> 参数</td></tr>
+        <tr><td>输入</td><td><code>messages</code> 角色数组</td><td><code>input</code>:字符串<strong>或</strong> item 列表</td></tr>
+        <tr><td>输出</td><td>单条 message</td><td><code>output</code>:<strong>异构 item 列表</strong>(message/reasoning/function_call/web_search_call…)</td></tr>
+        <tr><td>取文本</td><td><code>choices[0].message.content</code></td><td><code>output_text</code>(便捷聚合)</td></tr>
+        <tr><td>状态</td><td>无,自带历史</td><td><code>store=True</code> 存服务端,<code>previous_response_id</code> 串接</td></tr>
+        <tr><td>内置工具</td><td>无</td><td>web_search/file_search/code_interpreter/computer/image/MCP</td></tr>
+        <tr><td>函数工具形状</td><td>嵌在 <code>"function"</code> 下</td><td><strong>扁平</strong>:<code>type/name/parameters</code> 同级</td></tr>
+        <tr><td>函数结果回填</td><td><code>role:"tool"</code> 消息</td><td><code>type:"function_call_output"</code> item</td></tr>
+        <tr><td>流式</td><td>token 级 <code>delta</code></td><td>语义化 <code>response.*</code> 事件</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="resp-basic">3.2 最小请求:input / instructions / output_text</h3>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">resp_basic.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from openai import OpenAI
+client = OpenAI()
+
+resp = client.responses.create(
+    model="gpt-5.5",
+    instructions="你是简洁的编码助手。",       # 顶层系统指令（取代 system 消息）
+    input="怎么判断一个 Python 对象是某个类的实例？",   # 可以是一个纯字符串
+)
+
+print(resp.output_text)         # 便捷属性：把所有文本输出拼起来
+print(resp.id)                  # resp_...，用于下一轮 previous_response_id</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>instructions</code></b> 是顶层系统指令,等价于 Anthropic 的顶层 <code>system</code>。它每轮都可重设;若用 <code>previous_response_id</code> 串接,新一轮的 <code>instructions</code> 不会自动继承,要按需重传。</li>
+      <li><b><code>input</code> 可以是字符串</b>(单轮最省事),也可以是 item 列表(多轮/多模态/工具结果,见下)。</li>
+      <li><b><code>resp.output_text</code></b> 是把所有文本 item 聚合后的便捷字符串。要精细处理就遍历 <code>resp.output</code>(3.3)。</li>
+      <li><b><code>resp.id</code></b>(形如 <code>resp_...</code>)是服务端这次响应的句柄,下一轮传给 <code>previous_response_id</code> 就能续上,无需重发历史(3.4)。</li>
+    </ol></div>
+    <p>多模态/多轮时,<code>input</code> 用 item 列表,文本与图片用带 <code>type</code> 的内容块:</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">input 作为 item 列表</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>input=[
+    {"role": "user", "content": [
+        {"type": "input_text",  "text": "这张图里是什么？"},
+        {"type": "input_image", "image_url": "https://example.com/a.png"},
+    ]},
+]</code></pre></div>
+    </div>
+
+    <h3 id="resp-items">3.3 输出是「item 列表」,不是一条消息</h3>
+    <p>这是 Responses 最需要转变心智的地方。<code>resp.output</code> 是一个<strong>异构列表</strong>,每个 item 有 <code>type</code>。常见类型:</p>
+    <table>
+      <thead><tr><th>item <code>type</code></th><th>含义 / 关键字段</th></tr></thead>
+      <tbody>
+        <tr><td><code>message</code></td><td>助手文本,<code>content</code> 里是 <code>output_text</code> 部分(带 <code>text</code>、可能带 <code>annotations</code> 引用)</td></tr>
+        <tr><td><code>reasoning</code></td><td>推理模型的思考项(默认只给摘要/加密),多轮要原样保留(3.7)</td></tr>
+        <tr><td><code>function_call</code></td><td>你的自定义工具调用:<code>name</code>、<code>arguments</code>(JSON 字符串)、<code>call_id</code></td></tr>
+        <tr><td><code>web_search_call</code> / <code>file_search_call</code> / <code>code_interpreter_call</code></td><td>内置工具的调用记录(服务端已执行)</td></tr>
+        <tr><td><code>image_generation_call</code> / <code>mcp_call</code> 等</td><td>对应内置工具的产物</td></tr>
+      </tbody>
+    </table>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">遍历 output</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>for item in resp.output:
+    if item.type == "message":
+        for part in item.content:
+            if part.type == "output_text":
+                print(part.text)
+    elif item.type == "function_call":
+        print("要调用：", item.name, item.arguments, item.call_id)
+    elif item.type == "reasoning":
+        pass            # 推理项：原样留着，多轮回传</code></pre></div>
+    </div>
+    <p class="callout note"><span></span>类比 Anthropic:Responses 的 <code>output</code> item 列表 ≈ Anthropic <code>resp.content</code> 的内容块列表(text / tool_use / thinking)。区别是 OpenAI 把工具调用、推理、内置工具结果都做成<strong>顶层 item</strong>,而 Anthropic 是内容块。</p>
+
+    <h3 id="resp-state">3.4 有状态:<code>previous_response_id</code> 串接 <span class="pill core">关键差异</span></h3>
+    <p>Chat 是无状态的,你每轮自带全量历史。Responses 默认 <code>store=True</code>,把这次响应存在服务端;下一轮只发<strong>新输入</strong>,用 <code>previous_response_id</code> 指回上一条,服务端自动接上完整历史。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">resp_multiturn.py — 不重发历史</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>r1 = client.responses.create(model="gpt-5.5", input="金门大桥在哪个城市？")
+print(r1.output_text)
+
+r2 = client.responses.create(
+    model="gpt-5.5",
+    previous_response_id=r1.id,               # 接上 r1 的完整上下文
+    input="那它在哪个州？",                     # 只发新问题，不重发前面
+)
+print(r2.output_text)</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>previous_response_id=r1.id</code></b> 让服务端把 r1 及其之前的历史作为上下文,你只发增量。省带宽、省拼接,但历史<strong>存在 OpenAI 服务端</strong>。</li>
+      <li><b><code>store=False</code></b> 可关闭存储(零留存/合规场景),但那样就<strong>不能</strong>用 <code>previous_response_id</code> 串接,退回 Chat 式自带历史。</li>
+      <li><b>Conversations API</b> 是更上层的封装:创建一个 <code>conversation</code> 对象,把多次 responses 挂在同一会话下,适合长对话/多端同步。</li>
+      <li><b>对照 Anthropic:</b>Anthropic 没有服务端会话句柄,多轮一律自带 <code>messages</code>(或上 Managed Agents 的 session)。Responses 的 <code>previous_response_id</code> 是 OpenAI 这套独有的便利。</li>
+    </ol></div>
+
+    <h3 id="resp-builtin">3.5 内置工具(服务端执行,声明即用)</h3>
+    <p>Responses 自带一批 Anthropic「服务端工具」式的能力,声明在 <code>tools</code> 里,OpenAI 替你执行,结果作为 item 回到 <code>output</code>。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">resp_builtin.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>resp = client.responses.create(
+    model="gpt-5.5",
+    input="纽约今天天气怎么样？查一下。",
+    tools=[
+        {"type": "web_search"},                                    # 联网搜索
+        {"type": "file_search", "vector_store_ids": ["vs_123"]},   # 检索向量库
+        {"type": "code_interpreter", "container": {"type": "auto"}},# 沙箱跑代码
+        # {"type": "image_generation"} / {"type": "computer_use_preview"} / MCP ...
+    ],
+)
+print(resp.output_text)</code></pre></div>
+    </div>
+    <ul>
+      <li><b><code>web_search</code></b>:联网,结果带引用注解(<code>annotations</code>)。≈ Anthropic <code>web_search</code>。</li>
+      <li><b><code>file_search</code></b>:在你的 Vector Store 里做 RAG 检索,要先建向量库并传 <code>vector_store_ids</code>。</li>
+      <li><b><code>code_interpreter</code></b>:沙箱里跑 Python(数据分析、画图、生成文件)。≈ Anthropic <code>code_execution</code>。</li>
+      <li><b>MCP</b>:用 <code>{"type":"mcp", "server_label":..., "server_url":..., ...}</code> 直接接远程 MCP 服务器。</li>
+    </ul>
+    <p class="callout warn"><span></span>内置工具的 <code>type</code> 字符串(如 <code>computer_use_preview</code>、code_interpreter 的 <code>container</code> 形状)会随版本变化,以当天文档为准。它们和你的自定义函数工具可以混在同一个 <code>tools</code> 数组里。</p>
+
+    <h3 id="resp-fc">3.6 函数调用与 <code>call_id</code> 回填</h3>
+    <p>自定义函数工具在 Responses 里是<strong>扁平</strong>形状,回填用 <code>function_call_output</code> item(不是 Chat 的 <code>role:"tool"</code> 消息)。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">resp_function.py — 函数调用循环</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import json
+
+tools = [{
+    "type": "function",            # 扁平：name/parameters 与 type 同级（无 "function" 嵌套）
+    "name": "get_weather",
+    "description": "查询某城市当前天气",
+    "parameters": {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+        "additionalProperties": False,
+    },
+    "strict": True,
+}]
+
+history = [{"role": "user", "content": "北京天气？"}]
+resp = client.responses.create(model="gpt-5.5", input=history, tools=tools)
+
+# 找出所有 function_call item，执行并回填
+outputs = []
+for item in resp.output:
+    if item.type == "function_call":
+        args = json.loads(item.arguments)             # arguments 是 JSON 字符串
+        result = lookup_weather(args["city"])
+        outputs.append({
+            "type": "function_call_output",           # 回填项类型
+            "call_id": item.call_id,                  # 对上 function_call 的 call_id
+            "output": result,                         # 字符串
+        })
+
+# 把模型这轮的输出 + 工具结果接着发回（或用 previous_response_id 省去 resp.output）
+resp2 = client.responses.create(
+    model="gpt-5.5",
+    previous_response_id=resp.id,                     # 接上上文
+    input=outputs,                                    # 只发工具结果
+    tools=tools,
+)
+print(resp2.output_text)</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b>扁平工具形状</b>:<code>{"type":"function","name":...,"parameters":...,"strict":True}</code>——和 Chat 的「嵌在 <code>function</code> 下」不同。把 Chat 代码搬过来时这里最容易报错。</li>
+      <li><b>回填用 <code>function_call_output</code> item</b>,带 <code>call_id</code>(对上 <code>function_call.call_id</code>)和 <code>output</code>(字符串)。这取代了 Chat 的 <code>role:"tool"</code> 消息。</li>
+      <li><b>有两种续法</b>:① 用 <code>previous_response_id</code> 接上文,<code>input</code> 只放 <code>function_call_output</code>(推荐,省事);② 不用状态,则把 <code>resp.output</code> 整段 + 工具结果一起塞进新 <code>input</code>(类似 Chat 自带历史)。</li>
+      <li><b>对照 Anthropic:</b><code>call_id</code> = <code>tool_use_id</code>;<code>function_call_output</code> = <code>tool_result</code>。心智完全一致,只是命名和「item vs 内容块」的容器不同。</li>
+    </ol></div>
+
+    <h3 id="resp-reasoning">3.7 推理模型与 <code>reasoning.effort</code></h3>
+    <p>GPT-5 / o 系列是推理模型。Responses 用 <code>reasoning</code> 参数控制思考。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">resp_reasoning.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>resp = client.responses.create(
+    model="gpt-5.5",
+    input="证明：任意 5 个连续整数之和能被 5 整除。",
+    reasoning={
+        "effort": "medium",        # minimal / low / medium / high（视模型而定）
+        "summary": "auto",         # 让服务端返回一段推理摘要
+    },
+)
+# 推理摘要在 output 里的 reasoning item / 或 resp 上的便捷字段（按 SDK 版本）
+print(resp.output_text)</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>reasoning.effort</code></b> 控制思考深度与花销(≈ Anthropic 的 <code>output_config.effort</code>)。值通常是 <code>low/medium/high</code>,部分模型还有 <code>minimal</code>。深的更准但更慢更贵。</li>
+      <li><b><code>reasoning.summary="auto"</code></b> 才会给可读的推理摘要;<strong>原始思维链不返回</strong>(和 Anthropic 一致)。不设就只看到结果。</li>
+      <li><b>推理项要保留。</b>多轮(尤其带工具)时,把 <code>output</code> 里的 <code>reasoning</code> item 原样回传能显著提升连贯性。用 <code>previous_response_id</code> 串接时服务端自动保留;手动自带历史时别把 reasoning item 丢了。</li>
+      <li><b>推理 token 计费但不可见</b>,在 <code>usage</code> 里有计数。别用 <code>temperature</code> 等采样参数去「控制」推理模型——很多推理模型不接受这些参数。</li>
+    </ol></div>
+
+    <h3 id="resp-structured">3.8 结构化输出</h3>
+    <p>和 Chat 同理,但参数在 <code>text.format</code> 下(不是 <code>response_format</code>),或用 <code>responses.parse</code> + <code>text_format</code>。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">resp_structured.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from pydantic import BaseModel
+
+class Step(BaseModel):
+    explanation: str
+    output: str
+class Solution(BaseModel):
+    steps: list[Step]
+    answer: str
+
+# 方式 A：parse + Pydantic（推荐）
+resp = client.responses.parse(
+    model="gpt-5.5",
+    input="一步步解 8x + 7 = -23",
+    text_format=Solution,
+)
+sol = resp.output_parsed            # 已校验的 Solution 实例
+
+# 方式 B：手写 json_schema
+resp = client.responses.create(
+    model="gpt-5.5",
+    input="...",
+    text={"format": {
+        "type": "json_schema",
+        "name": "solution",
+        "schema": { "type": "object", "properties": {...},
+                    "required": [...], "additionalProperties": False },
+        "strict": True,
+    }},
+)</code></pre></div>
+    </div>
+    <p class="callout note"><span></span>记差异:<strong>Chat</strong> 用 <code>response_format=</code> + <code>message.parsed</code>;<strong>Responses</strong> 用 <code>text.format</code> / <code>text_format=</code> + <code>output_parsed</code>。<code>json_object</code>(只保证是 JSON、不校验 schema)在两者都有,但能用 <code>json_schema</code> + <code>strict</code> 就别用它。</p>
+
+    <h3 id="resp-stream">3.9 语义化流式事件 <span class="pill core">CORE</span></h3>
+    <p>Responses 的流式不是 Chat 那种「一坨 delta」,而是<strong>语义化的命名事件</strong>——和 Anthropic 的 <code>content_block_*</code> 思路如出一辙。设 <code>stream=True</code>,迭代得到 <code>response.*</code> 事件。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">resp_stream.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>stream = client.responses.create(
+    model="gpt-5.5",
+    input="写一段关于流式的科普",
+    stream=True,
+)
+for event in stream:
+    if event.type == "response.output_text.delta":
+        print(event.delta, end="", flush=True)            # 文本增量
+    elif event.type == "response.function_call_arguments.delta":
+        accumulate(event.delta)                           # 工具参数增量（字符串碎片）
+    elif event.type == "response.reasoning_summary_text.delta":
+        pass                                              # 推理摘要增量
+    elif event.type == "response.completed":
+        final = event.response                            # 完整 Response 对象在这里</code></pre></div>
+    </div>
+    <p>常见事件类型(按生命周期):</p>
+    <table>
+      <thead><tr><th>事件 <code>type</code></th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td><code>response.created</code> / <code>response.in_progress</code></td><td>响应开始 / 进行中(壳对象)</td></tr>
+        <tr><td><code>response.output_item.added</code></td><td>新增一个 output item(message / function_call / reasoning…)</td></tr>
+        <tr><td><code>response.content_part.added</code></td><td>某个 message item 内新增一个内容部分</td></tr>
+        <tr><td><code>response.output_text.delta</code> / <code>.done</code></td><td>文本增量 / 该文本部分完成</td></tr>
+        <tr><td><code>response.function_call_arguments.delta</code> / <code>.done</code></td><td>函数参数 JSON 字符串增量 / 完成(类比 <code>input_json_delta</code>)</td></tr>
+        <tr><td><code>response.reasoning_summary_text.delta</code></td><td>推理摘要增量</td></tr>
+        <tr><td><code>response.output_item.done</code></td><td>某个 item 完成</td></tr>
+        <tr><td><code>response.completed</code> / <code>.failed</code> / <code>.incomplete</code></td><td>整体结束 —— <code>event.response</code> 是完整 Response</td></tr>
+        <tr><td><code>error</code></td><td>流中错误</td></tr>
+      </tbody>
+    </table>
+    <div class="anno"><ul>
+      <li><b>对照 Anthropic:</b><code>response.output_text.delta</code> ≈ <code>text_delta</code>;<code>response.function_call_arguments.delta</code> ≈ <code>input_json_delta</code>(同样是参数 JSON 字符串碎片,累积后解析);<code>response.output_item.added</code> ≈ <code>content_block_start</code>;<code>response.completed</code> ≈ 末尾 <code>message_delta</code>+<code>message_stop</code>,且直接带完整对象。</li>
+      <li><b><code>response.completed</code> 里有完整 <code>response</code></b>,等于 Anthropic 的 <code>get_final_message()</code>:就算你只想要终态,流式也是高 <code>max_tokens</code> 下避免 HTTP 超时的正解。</li>
+      <li><b>未知事件优雅忽略</b>:事件类型会持续新增,别对未识别的 <code>type</code> 崩溃。</li>
+    </ul></div>
+  </section>
+
+  <!-- ============================ 4 ============================ -->
+  <section id="agents">
+    <h2><span class="num">4</span>Agents SDK <span class="pill core">框架</span></h2>
+    <p>前面两套是「打一次 API」。Agents SDK(<code>pip install openai-agents</code>)是<strong>编排框架</strong>:它替你写好了 agentic loop、工具循环、多智能体路由、护栏、会话记忆和追踪。它默认跑在 Responses 之上。心智上,它就是我们在 Anthropic 教程里手写的那个循环——被产品化了。</p>
+
+    <h3 id="ag-model">4.1 心智模型:Agent + Runner 的 agent loop</h3>
+    <p>两个核心对象:<strong>Agent</strong>(配置:指令、模型、工具、护栏、handoff)和 <strong>Runner</strong>(执行器:跑那个循环)。Runner 的循环:</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">Runner 的 agent loop（官方语义）</span><span class="lang">flow</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="flow"><code>调用 LLM（当前 agent + 当前输入）
+  ├─ 产生 final_output 且无工具调用  → 循环结束，返回 RunResult
+  ├─ 发生 handoff                   → 切换 current agent，重启循环
+  └─ 有工具调用                     → 执行工具，把结果追加进输入，再循环
+超过 max_turns                      → 抛 MaxTurnsExceeded（max_turns=None 关闭）</code></pre></div>
+    </div>
+    <p>这正是我们手写过的循环,只是 Runner 把「判停止原因 / 追加历史 / 执行工具 / 回填」全包了。</p>
+
+    <h3 id="ag-define">4.2 定义 Agent 与 Hello World</h3>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">hello_agent.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>import asyncio
+from agents import Agent, Runner
+
+agent = Agent(
+    name="History Tutor",
+    instructions="清晰简洁地回答历史问题。",
+)
+
+async def main():
+    result = await Runner.run(agent, "罗马帝国什么时候灭亡？")
+    print(result.final_output)
+
+if __name__ == "__main__":
+    asyncio.run(main())</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>Agent(name, instructions, ...)</code></b>:<code>name</code> 用于追踪与 handoff;<code>instructions</code> 是系统提示(也可传一个函数,根据上下文动态生成)。其他常用参数:<code>model</code>、<code>tools</code>、<code>handoffs</code>、<code>output_type</code>(结构化最终输出)、<code>model_settings</code>(温度/effort 等)、<code>input_guardrails</code>/<code>output_guardrails</code>。</li>
+      <li><b><code>Runner.run(agent, input)</code></b> 是 <code>async</code>,返回 <code>RunResult</code>。同步场景用 <code>Runner.run_sync(...)</code>;流式用 <code>Runner.run_streamed(...)</code>(4.9)。</li>
+      <li><b><code>result.final_output</code></b> 是 agent 的最终回答(默认是字符串;设了 <code>output_type</code> 则是该类型的实例)。</li>
+    </ol></div>
+
+    <h3 id="ag-tools">4.3 工具:<code>@function_tool</code></h3>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">tool_agent.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from agents import Agent, Runner, function_tool, RunContextWrapper
+
+@function_tool
+async def fetch_weather(city: str) -> str:
+    """查询某城市当前天气。
+
+    Args:
+        city: 城市名。
+    """
+    return f"{city}：晴，24°C"
+
+@function_tool(failure_error_function=lambda ctx, err: "查询失败，请稍后再试。")
+def get_profile(user_id: str) -> str:
+    """按用户 ID 查资料。"""
+    if user_id == "u_1":
+        return "..."
+    raise ValueError("not found")
+
+agent = Agent(
+    name="Assistant",
+    instructions="需要时调用工具。",
+    tools=[fetch_weather, get_profile],
+)</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>@function_tool</code></b> 把普通函数变工具:<strong>名字</strong>取自函数名(可 <code>name_override</code>),<strong>描述</strong>取自 docstring,<strong>参数 schema</strong> 由类型注解自动生成(用 Pydantic/TypedDict 表达复杂结构)。同步异步皆可。这等于 Anthropic 的 <code>@beta_tool</code>。</li>
+      <li><b><code>RunContextWrapper</code></b>:把它作为第一个参数(<code>ctx: RunContextWrapper[T]</code>),工具就能拿到你传给 <code>Runner.run(..., context=...)</code> 的依赖对象(DB 连接、用户身份等)。这个 context <strong>不进模型上下文</strong>,纯本地依赖注入。</li>
+      <li><b><code>failure_error_function</code></b>:工具抛异常时,用它生成回给模型的错误文本(让 agent 自愈);传 <code>None</code> 则异常上抛由你处理。默认会记录错误并回一段通用提示。</li>
+      <li><b>安全同理:</b>工具体内的路径/命令仍是不可信输入(模型决定参数),该做的校验、隔离、白名单一个都不能少——框架不替你做这件事。</li>
+    </ol></div>
+
+    <h3 id="ag-run">4.4 运行与 RunResult</h3>
+    <table>
+      <thead><tr><th>方法</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>await Runner.run(agent, input)</code></td><td>异步,返回 <code>RunResult</code></td></tr>
+        <tr><td><code>Runner.run_sync(agent, input)</code></td><td>同步封装(内部跑事件循环)</td></tr>
+        <tr><td><code>Runner.run_streamed(agent, input)</code></td><td>返回 <code>RunResultStreaming</code>,配 <code>.stream_events()</code>(4.9)</td></tr>
+      </tbody>
+    </table>
+    <p><code>RunResult</code> 关键字段:</p>
+    <ul>
+      <li><b><code>final_output</code></b> — 最终输出(字符串或 <code>output_type</code> 实例)。</li>
+      <li><b><code>new_items</code></b> — 本次运行产生的所有项(消息、工具调用、工具结果、handoff…)。</li>
+      <li><b><code>to_input_list()</code></b> — 把本次结果转成「下一轮的 input」,用于手动续接多轮(见下)。</li>
+      <li><b><code>last_agent</code></b> — 最终是哪个 agent 收尾的(handoff 后很有用)。</li>
+    </ul>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">手动多轮：to_input_list()</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>result = await Runner.run(agent, "金门大桥在哪个城市？")
+print(result.final_output)
+
+new_input = result.to_input_list() + [{"role": "user", "content": "那在哪个州？"}]
+result = await Runner.run(agent, new_input)        # 带上一轮全部上下文
+print(result.final_output)</code></pre></div>
+    </div>
+    <p>异常:<code>MaxTurnsExceeded</code>(超 <code>max_turns</code>)、<code>ModelBehaviorError</code>(模型输出畸形)、<code>InputGuardrailTripwireTriggered</code>/<code>OutputGuardrailTripwireTriggered</code>(护栏触发,见 4.7)。</p>
+
+    <h3 id="ag-hosted">4.5 托管工具与 agent.as_tool</h3>
+    <p>内置的 OpenAI 托管工具被封装成类,直接塞进 <code>tools</code>:</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">hosted_tools.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from agents import Agent, Runner, WebSearchTool, FileSearchTool
+
+agent = Agent(
+    name="Assistant",
+    tools=[
+        WebSearchTool(),
+        FileSearchTool(max_num_results=3, vector_store_ids=["VS_ID"]),
+        # CodeInterpreterTool() / ImageGenerationTool() / ComputerTool(...) / HostedMCPTool(...)
+    ],
+)</code></pre></div>
+    </div>
+    <p>还能把一个 Agent 当工具给另一个 Agent 用(<strong>agent-as-tool</strong>,适合「编排者调用专家但不交出控制权」):</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">agent_as_tool.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>spanish = Agent(name="Spanish agent", instructions="把用户消息翻成西班牙语")
+
+orchestrator = Agent(
+    name="orchestrator",
+    instructions="你是翻译协调者，用给你的工具完成翻译。",
+    tools=[
+        spanish.as_tool(
+            tool_name="translate_to_spanish",
+            tool_description="把用户消息翻成西班牙语",
+        ),
+    ],
+)</code></pre></div>
+    </div>
+    <p class="callout note"><span></span><b>as_tool vs handoff:</b><code>as_tool</code> 是「调用专家拿结果,控制权仍在协调者」(像函数调用);<code>handoff</code> 是「把整段对话<strong>移交</strong>给另一个 agent,由它接管收尾」(下一节)。</p>
+
+    <h3 id="ag-handoff">4.6 Handoffs:多智能体路由</h3>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">handoffs.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>history = Agent(name="History Tutor",
+                handoff_description="历史问题专家",
+                instructions="清晰简洁地回答历史问题。")
+math = Agent(name="Math Tutor",
+             handoff_description="数学问题专家",
+             instructions="一步步讲数学并给例子。")
+
+triage = Agent(
+    name="Triage Agent",
+    instructions="把每个问题路由给合适的专家。",
+    handoffs=[history, math],             # 可移交给这些 agent
+)
+
+result = await Runner.run(triage, "美国第一任总统是谁？")
+print(result.final_output)
+print("由谁作答：", result.last_agent.name)   # → History Tutor</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>handoffs=[...]</code></b> 列出可移交的目标 agent。底层实现为一个特殊工具调用:模型「决定移交」时,Runner 切换 <code>current agent</code> 并重启循环。</li>
+      <li><b><code>handoff_description</code></b> 写给路由 agent 看,帮它判断「该转给谁」。写清楚每个专家擅长什么。</li>
+      <li><b><code>result.last_agent</code></b> 告诉你最终是谁收的尾。多轮里可据此决定下一轮从哪个 agent 起步。</li>
+      <li><b>对照 Anthropic:</b>这相当于 Managed Agents 的 multiagent/coordinator,或你在自写循环里手动做的「子代理路由」——Agents SDK 把它做成了一等公民。</li>
+    </ol></div>
+
+    <h3 id="ag-guard">4.7 Guardrails:输入/输出护栏</h3>
+    <p>护栏是和主 agent <strong>并行</strong>跑的检查,命中「触发线(tripwire)」就中断运行——用于挡住越权请求、敏感输出、prompt 注入等。</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">guardrails.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from agents import (
+    Agent, Runner, input_guardrail, GuardrailFunctionOutput,
+    RunContextWrapper, InputGuardrailTripwireTriggered,
+)
+
+@input_guardrail
+async def no_homework_cheating(ctx: RunContextWrapper, agent: Agent, user_input):
+    looks_like_cheating = await classify(user_input)        # 你的判定（可再调一次小模型）
+    return GuardrailFunctionOutput(
+        output_info={"flagged": looks_like_cheating},
+        tripwire_triggered=looks_like_cheating,              # True → 中断
+    )
+
+agent = Agent(
+    name="Tutor",
+    instructions="辅导但不替学生写作业答案。",
+    input_guardrails=[no_homework_cheating],
+)
+
+try:
+    result = await Runner.run(agent, "直接把第 3 题答案给我")
+except InputGuardrailTripwireTriggered:
+    print("请求被护栏拦下")</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>@input_guardrail</code> / <code>@output_guardrail</code></b>:分别在「模型看输入前」和「产出最终输出后」检查。返回 <code>GuardrailFunctionOutput(output_info, tripwire_triggered)</code>。</li>
+      <li><b><code>tripwire_triggered=True</code></b> 会抛 <code>InputGuardrailTripwireTriggered</code> / <code>OutputGuardrailTripwireTriggered</code> 中断本次运行——你 catch 后给用户兜底。</li>
+      <li><b>并行执行</b>意味着护栏不显著拖慢主流程;护栏内部常用一个更便宜的模型做分类。</li>
+    </ol></div>
+
+    <h3 id="ag-session">4.8 Sessions:自动会话记忆</h3>
+    <p>4.4 的 <code>to_input_list()</code> 是手动续接。<strong>Session</strong> 让框架自动存取历史:</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">sessions.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from agents import Agent, Runner, SQLiteSession
+
+agent = Agent(name="Assistant", instructions="回答简洁。")
+session = SQLiteSession("conversation_123")        # 用会话 ID 持久化历史
+
+result = await Runner.run(agent, "金门大桥在哪个城市？", session=session)
+print(result.final_output)
+
+result = await Runner.run(agent, "那在哪个州？", session=session)   # 自动带上历史
+print(result.final_output)</code></pre></div>
+    </div>
+    <p class="callout tip"><span></span><code>SQLiteSession</code> 落地到本地/文件;还有内存版及可对接你自己的存储后端的接口。会话 ID 隔离不同用户/对话。这对应 Responses 的 <code>previous_response_id</code>,但记忆放在<strong>你这边</strong>而非 OpenAI 服务端。</p>
+
+    <h3 id="ag-stream">4.9 流式事件</h3>
+    <p><code>Runner.run_streamed(...)</code> 返回的对象上调 <code>.stream_events()</code>,产出三类事件:</p>
+    <div class="codewrap">
+      <div class="codehead"><span class="fname">stream_agent.py</span><span class="lang">python</span></div>
+      <div class="panes"><button class="copybtn">复制</button><pre data-lang="py"><code>from openai.types.responses import ResponseTextDeltaEvent
+from agents import Agent, Runner
+
+agent = Agent(name="Joker", instructions="你是助手。")
+result = Runner.run_streamed(agent, input="讲 5 个笑话")
+
+async for event in result.stream_events():
+    if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+        print(event.data.delta, end="", flush=True)         # 逐 token
+    elif event.type == "run_item_stream_event":
+        if event.name == "tool_called":
+            print("\n[调用工具]", event.item)
+        elif event.name == "tool_output":
+            print("\n[工具结果]", event.item)
+    elif event.type == "agent_updated_stream_event":
+        print("\n[切换到 agent]", event.new_agent.name)      # handoff 时</code></pre></div>
+    </div>
+    <div class="anno"><ol>
+      <li><b><code>raw_response_event</code></b> 是<strong>透传底层 Responses 的语义事件</strong>(就是 3.9 那些 <code>response.*</code>)。要逐 token 流文本,就匹配 <code>ResponseTextDeltaEvent</code> 取 <code>event.data.delta</code>。</li>
+      <li><b><code>run_item_stream_event</code></b> 是<strong>高层语义</strong>:<code>event.name</code> ∈ <code>message_output_created</code> / <code>tool_called</code> / <code>tool_output</code> / <code>handoff_requested</code> / <code>handoff_occured</code> / <code>reasoning_item_created</code> 等,<code>event.item</code> 是对应的项。用它做 UI 上「正在调用 X 工具」这类提示最合适。</li>
+      <li><b><code>agent_updated_stream_event</code></b>:当前 agent 变了(handoff),<code>event.new_agent</code> 是新 agent。</li>
+      <li><b>对照 Anthropic:</b>这就是一层封装——<code>raw_response_event</code> ≈ 原始 SSE 事件,<code>run_item_stream_event</code> ≈ 你自己在循环里根据内容块类型打的「语义日志」,只是 SDK 替你做了。</li>
+    </ol></div>
+
+    <h3 id="ag-trace">4.10 Tracing:开箱即用的可观测性</h3>
+    <p>Agents SDK 默认<strong>自动追踪</strong>每次运行:LLM 调用、工具调用、handoff、护栏都记成 span,可在 OpenAI 后台的 Traces 面板里看整条轨迹。这对调多智能体系统极有用——你能看清「为什么路由到了那个 agent」「哪个工具慢」。</p>
+    <ul>
+      <li>默认开启;可用 <code>RunConfig(tracing_disabled=True)</code> 关闭,或用 <code>trace(...)</code> 上下文把多次 run 归到同一条 trace。</li>
+      <li>可接第三方可观测平台(通过 trace processor 导出)。</li>
+      <li>敏感数据合规时可配置不上传具体输入输出,只留结构。</li>
+    </ul>
+    <p class="callout note"><span></span>Anthropic 侧没有等价的内建追踪(Managed Agents 有 observability/事件流);自托管循环要可观测得自己埋点。Agents SDK 的 tracing 是它相对「手搓循环」的一大卖点。</p>
+  </section>
+
+  <!-- ============================ 5 ============================ -->
+  <section id="mapping">
+    <h2><span class="num">5</span>OpenAI ↔ Anthropic 横向对照</h2>
+    <p>已经懂 Anthropic 那套的人,用这张表迁移最快。概念一一对应,差的只是命名和容器。</p>
+    <table>
+      <thead><tr><th>概念</th><th>OpenAI</th><th>Anthropic</th></tr></thead>
+      <tbody>
+        <tr><td>客户端</td><td><code>OpenAI()</code></td><td><code>anthropic.Anthropic()</code></td></tr>
+        <tr><td>系统提示</td><td>Chat: <code>system/developer</code> 消息;Responses: <code>instructions</code></td><td>顶层 <code>system</code>(+4.8 会话内 system 消息)</td></tr>
+        <tr><td>停止原因</td><td><code>finish_reason</code> / Responses status</td><td><code>stop_reason</code></td></tr>
+        <tr><td>工具定义</td><td>Chat 嵌套 / Responses 扁平 <code>type:function</code></td><td><code>{name, description, input_schema}</code></td></tr>
+        <tr><td>工具调用 ID</td><td><code>tool_call_id</code> / <code>call_id</code></td><td><code>tool_use_id</code></td></tr>
+        <tr><td>工具结果</td><td>Chat <code>role:tool</code> / Responses <code>function_call_output</code></td><td><code>tool_result</code> 块(全部放一条 user 消息)</td></tr>
+        <tr><td>参数流式</td><td><code>arguments</code> 增量 / <code>function_call_arguments.delta</code></td><td><code>input_json_delta</code>(<code>partial_json</code>)</td></tr>
+        <tr><td>推理控制</td><td><code>reasoning.effort</code>(+ <code>summary</code>)</td><td><code>thinking:{type:adaptive}</code> + <code>output_config.effort</code></td></tr>
+        <tr><td>结构化输出</td><td>Chat <code>response_format</code> / Responses <code>text.format</code> / <code>.parse</code></td><td><code>output_config.format</code> / <code>messages.parse</code></td></tr>
+        <tr><td>内置:联网/代码</td><td><code>web_search</code> / <code>code_interpreter</code></td><td><code>web_search_2026...</code> / <code>code_execution_2026...</code></td></tr>
+        <tr><td>有状态多轮</td><td><code>previous_response_id</code> / Conversations</td><td>自带 <code>messages</code> / Managed Agents session</td></tr>
+        <tr><td>Agent 框架</td><td>Agents SDK(Agent + Runner)</td><td>Claude Agent SDK / Tool Runner / 自写 loop</td></tr>
+        <tr><td>多智能体</td><td>handoffs / agent.as_tool</td><td>Managed Agents multiagent / 子代理</td></tr>
+        <tr><td>护栏</td><td>input/output guardrails(tripwire)</td><td>permission policy / 自写人审</td></tr>
+        <tr><td>可观测</td><td>内建 Tracing</td><td>Managed Agents observability / 自埋点</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============================ 6 ============================ -->
+  <section id="bestpractice">
+    <h2><span class="num">6</span>最佳实践 &amp; 速查</h2>
+
+    <h3>选型</h3>
+    <ul>
+      <li>新项目默认 <strong>Responses</strong>;要多智能体/护栏/追踪上 <strong>Agents SDK</strong>;只为兼容性/迁移老代码用 <strong>Chat Completions</strong>。</li>
+      <li>三者可混用:Agents SDK 底层就是 Responses;Responses 与 Chat 的工具/结构化心智一致,差在形状。</li>
+    </ul>
+
+    <h3>函数调用(三套通用)</h3>
+    <ul>
+      <li>把<strong>整条助手消息/输出</strong>追加回历史,再处理工具——否则模型「失忆」。</li>
+      <li><code>arguments</code> 永远是 <strong>JSON 字符串</strong>,必须 <code>json.loads</code>;流式时按 <code>index</code> 累积碎片再解析。</li>
+      <li>结果回填要对上 ID(<code>tool_call_id</code> / <code>call_id</code>);失败也要回结果(错误文本),让模型自愈。</li>
+      <li>工具形状别搞混:<strong>Chat 嵌在 <code>function</code> 下,Responses 扁平</strong>。</li>
+    </ul>
+
+    <h3>结构化输出</h3>
+    <ul>
+      <li>用 <code>strict:True</code> + <code>additionalProperties:False</code> + 全字段 <code>required</code>(可选字段用 <code>null</code> 联合类型表达)。</li>
+      <li>优先 <code>.parse()</code> + Pydantic;别用只保证「是 JSON」的 <code>json_object</code>。</li>
+      <li>判 <code>finish_reason</code>/status:被拒或截断时输出可能不符合 schema。</li>
+    </ul>
+
+    <h3>流式</h3>
+    <ul>
+      <li>高 <code>max_tokens</code>/<code>max_completion_tokens</code> 时一律流式,避免 HTTP 超时。</li>
+      <li>Responses 的 <code>response.completed</code>(及 Chat 的累积、Agents 的 stream 收尾)给你完整终态,等价 Anthropic 的 <code>get_final_message()</code>。</li>
+      <li>Chat 流式要 usage,记得 <code>stream_options={"include_usage": True}</code>;<code>choices</code> 可能为空先判空。</li>
+      <li>对未知事件类型优雅忽略(前向兼容)。</li>
+    </ul>
+
+    <h3>推理模型</h3>
+    <ul>
+      <li>用 <code>reasoning.effort</code> 控深度;要可读摘要设 <code>summary</code>;原始思维链不返回。</li>
+      <li>多轮保留 <code>reasoning</code> item(<code>previous_response_id</code> 自动保留;手动历史别丢)。</li>
+      <li>推理模型用 <code>max_completion_tokens</code>,别用 <code>max_tokens</code>;很多推理模型不接受采样参数。</li>
+    </ul>
+
+    <h3>Agents SDK</h3>
+    <ul>
+      <li><code>@function_tool</code> 自动生成 schema;用 <code>RunContextWrapper</code> 注入本地依赖(不进模型上下文)。</li>
+      <li>多轮:简单用 <code>Session</code> 自动记忆,精细用 <code>to_input_list()</code> 手动续。</li>
+      <li><code>as_tool</code>(保留控制权)vs <code>handoff</code>(移交收尾)按需选。</li>
+      <li>护栏用更便宜的模型并行跑;<code>max_turns</code> 防失控;善用内建 Tracing 调多智能体。</li>
+      <li>工具体内仍要做安全校验/隔离——框架不替你做。</li>
+    </ul>
+
+    <hr>
+    <p class="subtitle">全文锁定形状与心智模型,与官方 SDK(<code>openai</code> / <code>openai-agents</code>)的行为一致;具体模型字符串、内置工具 <code>type</code> 与 <code>.parse</code> 命名空间请以你写代码当天的官方文档为准。和本站的 Anthropic 教程对照着读,迁移最快。</p>
+  </section>
+</main>
+</div>
+
+<script>
+(function(){
+  const PY_KW = "False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|self|cls|match|case";
+  const PY_BI = "print|len|range|int|str|float|bool|list|dict|set|tuple|open|next|input|enumerate|isinstance|super|Exception|ValueError|type|asyncio";
+  const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+  function hlPython(raw){
+    const code = esc(raw);
+    const re = new RegExp(
+      "(#[^\\n]*)" +
+      "|((?:[fFrRbBuU]{0,2})(?:\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?'''|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*'))" +
+      "|(@[A-Za-z_][\\w.]*)" +
+      "|\\b(" + PY_KW + ")\\b" +
+      "|\\b(" + PY_BI + ")\\b" +
+      "|\\b(\\d[\\w.]*)\\b",
+      "g"
+    );
+    return code.replace(re, (m, c, s, dec, kw, bi, num) => {
+      if (c)   return '<span class="t-com">'+c+'</span>';
+      if (s)   return '<span class="t-str">'+s+'</span>';
+      if (dec) return '<span class="t-dec">'+dec+'</span>';
+      if (kw)  return '<span class="t-kw">'+kw+'</span>';
+      if (bi)  return '<span class="t-fn">'+bi+'</span>';
+      if (num) return '<span class="t-num">'+num+'</span>';
+      return m;
+    });
+  }
+  function hlPlain(raw){
+    const code = esc(raw);
+    return code.replace(/(#[^\n]*)|("(?:[^"\\]|\\.)*")/g,(m,c,s)=>
+      c?'<span class="t-com">'+c+'</span>':'<span class="t-str">'+s+'</span>');
+  }
+
+  document.querySelectorAll("pre[data-lang] code").forEach(el=>{
+    const lang = el.parentElement.getAttribute("data-lang");
+    const raw = el.textContent;
+    el.innerHTML = (lang==="py") ? hlPython(raw) : hlPlain(raw);
+  });
+
+  document.querySelectorAll(".copybtn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const code = btn.parentElement.querySelector("code").textContent;
+      navigator.clipboard.writeText(code).then(()=>{
+        const old = btn.textContent; btn.textContent = "已复制 ✓";
+        setTimeout(()=>btn.textContent = old, 1200);
+      });
+    });
+  });
+
+  const links = [...document.querySelectorAll("nav.toc a")];
+  const map = {};
+  links.forEach(a=>{ const id=a.getAttribute("href").slice(1); const s=document.getElementById(id); if(s) map[id]=a; });
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(a=>a.classList.remove("active"));
+        const a = map[e.target.id]; if(a) a.classList.add("active");
+      }
+    });
+  }, {rootMargin:"-15% 0px -75% 0px"});
+  Object.keys(map).forEach(id=>{ const el=document.getElementById(id); if(el) obs.observe(el); });
+
+  const toc = document.getElementById("toc"), tog = document.getElementById("menuToggle");
+  tog.addEventListener("click",()=>toc.classList.toggle("open"));
+  toc.addEventListener("click",e=>{ if(e.target.tagName==="A") toc.classList.remove("open"); });
+})();
+</script>
+</body>
+</html>
