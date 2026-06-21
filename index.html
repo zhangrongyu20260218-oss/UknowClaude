@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude 工程文档站 · 面向资深程序员</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel2:#1b1f2a; --fg:#e6e9ef; --muted:#9aa3b2;
+    --accent:#d97757; --accent2:#7aa2f7; --line:#272c38;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.7;display:flex;align-items:center;justify-content:center;padding:48px 20px}
+  .wrap{width:100%;max-width:860px}
+  header{margin-bottom:36px}
+  h1{font-size:34px;margin:0 0 10px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:16px;margin:0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:680px){.grid{grid-template-columns:1fr}}
+  a.card{display:block;text-decoration:none;color:inherit;background:var(--panel);
+    border:1px solid var(--line);border-radius:14px;padding:24px;transition:.15s;position:relative;overflow:hidden}
+  a.card:hover{border-color:var(--accent);transform:translateY(-3px);background:var(--panel2)}
+  a.card::after{content:"→";position:absolute;top:22px;right:24px;color:var(--muted);font-size:20px;transition:.15s}
+  a.card:hover::after{color:var(--accent);transform:translateX(4px)}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--accent);background:rgba(217,119,87,.12);border:1px solid rgba(217,119,87,.35);
+    padding:3px 10px;border-radius:20px;margin-bottom:14px}
+  .tag.blue{color:var(--accent2);background:rgba(122,162,247,.12);border-color:rgba(122,162,247,.35)}
+  h2{font-size:20px;margin:0 0 8px}
+  .desc{color:var(--muted);font-size:14.5px;margin:0 0 14px}
+  ul{margin:0;padding-left:18px;font-size:13.5px;color:#b6bdca}
+  li{margin:4px 0}
+  .meta{margin-top:18px;font-size:12.5px;color:#6b7385}
+  .meta code{background:var(--panel2);padding:2px 7px;border-radius:5px;color:#e3b7a6;
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.9em}
+  footer{margin-top:40px;color:#6b7385;font-size:13px;border-top:1px solid var(--line);padding-top:20px}
+  footer a{color:var(--accent2);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Claude 工程文档站</h1>
+    <p class="sub">面向资深程序员的 Claude API / Agent 实战讲解。默认模型 <code style="background:none;color:var(--accent);font-family:monospace">claude-opus-4-8</code>。</p>
+  </header>
+
+  <div class="grid">
+    <a class="card" href="./claude-agent-sdk-app-tutorial.html">
+      <span class="tag">实战 · Agent</span>
+      <h2>用 Agent SDK 造一个真实应用</h2>
+      <p class="desc">从零造一个能跑的 CLI 编码 Agent（miniclaude），逐行讲解,覆盖 Agent 全部核心功能。</p>
+      <ul>
+        <li>agentic loop · 工具设计与安全边界</li>
+        <li>流式 + adaptive thinking / effort</li>
+        <li>服务端工具 · pause_turn</li>
+        <li>prompt caching · compaction · 跨会话记忆</li>
+        <li>错误处理 · refusal · 人审 · 完整 main.py</li>
+      </ul>
+    </a>
+
+    <a class="card" href="./opus-message-api-guide.html">
+      <span class="tag blue">基础 · Message API</span>
+      <h2>Claude Opus Message API 完整讲解</h2>
+      <p class="desc">把 Message API 当成「带几处反直觉行为的 HTTP 端点」来吃透,每个参数为什么存在、哪里会静默失效。</p>
+      <ul>
+        <li>请求结构 · 多模态 · Thinking / Effort</li>
+        <li>响应结构 · stop_reason · 流式</li>
+        <li>Tool Use · 服务端/客户端工具</li>
+        <li>上下文与成本优化 · 结构化输出</li>
+        <li>错误处理 · 多轮会话 · 长跑整合</li>
+      </ul>
+    </a>
+  </div>
+
+  <footer>
+    源码与文档托管于 GitHub Pages · 全文对应 Anthropic 官方 SDK 真实行为 ·
+    <a href="https://github.com/zhangrongyu20260218-oss/UknowClaude">仓库</a>
+  </footer>
+</div>
+</body>
+</html>
