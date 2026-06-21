@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Managed Agents 完整讲解 · 托管 Agent 框架 · 资深程序员向</title>
+<style>
+  :root{
+    --bg:#0f1115;--panel:#161922;--panel2:#1b1f2a;--fg:#e6e9ef;--muted:#9aa3b2;
+    --accent:#d97757;--accent2:#7aa2f7;--line:#272c38;--code-bg:#11141b;
+    --kw:#c678dd;--str:#98c379;--num:#d19a66;--com:#6f7887;--fn:#61afef;
+    --ok:#2ea043;--warn:#d29922;--danger:#f85149;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;overflow-x:hidden}
+  body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.75}
+  .layout{display:flex;max-width:1500px;margin:0 auto}
+  nav.toc{width:330px;flex:0 0 330px;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav.toc h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:4px 10px;border-radius:6px;font-size:13px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--fg);background:var(--panel2)}
+  nav.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--panel2)}
+  nav.toc a.sub{padding-left:22px;font-size:12.5px}
+  nav.toc .brand{font-weight:700;font-size:17px;color:var(--fg);margin-bottom:4px}
+  nav.toc .brand small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:4px}
+  main{flex:1 1 auto;min-width:0;padding:40px 56px 120px;max-width:1000px}
+  h1{font-size:33px;line-height:1.25;margin:0 0 8px}
+  .subtitle{color:var(--muted);font-size:16px;margin:0 0 28px}
+  section{padding-top:48px;margin-top:-24px}
+  section>h2{font-size:25px;border-bottom:1px solid var(--line);padding-bottom:10px;margin:8px 0 18px}
+  section>h2 .num{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:19px;margin:30px 0 10px;color:#f0f2f6}
+  h4{font-size:15.5px;margin:20px 0 8px;color:var(--accent2)}
+  p{margin:12px 0} a{color:var(--accent2)} strong{color:#fff}
+  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:.88em;background:var(--panel2);padding:2px 6px;border-radius:5px;color:#e3b7a6}
+  ul,ol{padding-left:24px} li{margin:6px 0}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;background:var(--panel)}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#fff}
+  pre{position:relative;margin:14px 0 20px;background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:42px 18px 16px;overflow:auto;line-height:1.55}
+  pre code{background:none;padding:0;color:#d7dae0;font-size:13.5px}
+  .code-label{position:absolute;left:16px;top:10px;color:var(--muted);font:12px ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.06em}
+  .copy{position:absolute;right:10px;top:7px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px}
+  .copy:hover{color:#fff;border-color:#4a5262}
+  .kw{color:var(--kw)}.str{color:var(--str)}.numlit{color:var(--num)}.com{color:var(--com)}.fn{color:var(--fn)}
+  .lead{font-size:17px;color:#cfd6e1;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .callout{border-radius:10px;padding:14px 16px 14px 46px;margin:18px 0;position:relative;border:1px solid var(--line);font-size:15px}
+  .callout::before{position:absolute;left:14px;top:13px;font-size:18px;font-weight:700}
+  .callout.note{background:rgba(122,162,247,.08);border-color:rgba(122,162,247,.35)}.callout.note::before{content:"i";color:var(--accent2)}
+  .callout.tip{background:rgba(46,160,67,.08);border-color:rgba(46,160,67,.35)}.callout.tip::before{content:"✓";color:var(--ok)}
+  .callout.warn{background:rgba(210,153,34,.08);border-color:rgba(210,153,34,.4)}.callout.warn::before{content:"!";color:var(--warn)}
+  .callout.pitfall{background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.4)}.callout.pitfall::before{content:"x";color:var(--danger)}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .pill{display:inline-block;font-size:11px;line-height:1;padding:4px 7px;border-radius:999px;vertical-align:middle;margin-left:6px;border:1px solid}
+  .pill.beta{color:var(--warn);border-color:rgba(210,153,34,.5);background:rgba(210,153,34,.1)}
+  .pill.core{color:#8bd49c;border-color:rgba(46,160,67,.5);background:rgba(46,160,67,.1)}
+  .pill.new{color:#91b8ff;border-color:rgba(122,162,247,.5);background:rgba(122,162,247,.1)}
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}
+  .flow>div{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;text-align:center;font-size:13px}
+  .flow b{display:block;color:var(--accent);font-size:15px;margin-bottom:4px}
+  .diagram{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;white-space:pre;overflow:auto;color:#cfd6e1;font-size:13px;line-height:1.55}
+  .toplink{display:inline-block;margin-bottom:18px;text-decoration:none;color:var(--muted);font-size:13px}.toplink:hover{color:#fff}
+  .menu-btn{display:none;position:fixed;right:16px;bottom:16px;z-index:60;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:#fff;font-size:20px;cursor:pointer}
+  @media(max-width:900px){nav.toc{position:fixed;left:0;top:0;z-index:50;transform:translateX(-100%);transition:transform .2s;width:300px;flex-basis:300px;box-shadow:8px 0 30px rgba(0,0,0,.35)}nav.toc.open{transform:translateX(0)}main{padding:28px 20px 100px;max-width:none}h1{font-size:28px}.menu-btn{display:block}.flow{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.flow{grid-template-columns:1fr}table{display:block;max-width:100%;overflow-x:auto}th,td{padding:7px 8px;font-size:12.5px}pre{padding-left:12px;padding-right:12px}}
+</style>
+</head>
+<body>
+<button class="menu-btn" id="menuBtn" aria-label="打开目录">☰</button>
+<div class="layout">
+<nav class="toc" id="toc">
+  <a class="brand" href="index.html">LLM 工程文档站<small>Claude Managed Agents</small></a>
+  <h2>正文</h2>
+  <a href="#mental">1. 它到底托管了什么</a>
+  <a href="#choose">2. 三种构建层级怎么选</a>
+  <a href="#quickstart">3. 最小可运行主线</a>
+  <a href="#agent">4. Agent：版本化配置</a>
+  <a href="#environment">5. Environment 与沙箱</a>
+  <a href="#session">6. Session 状态机</a>
+  <a href="#events">7. Events 与流式</a>
+  <a href="#tools">8. 工具与权限</a>
+  <a href="#resources">9. 文件 / GitHub / MCP / Skills</a>
+  <a href="#outcomes">10. Outcomes：自评迭代</a>
+  <a href="#multiagent">11. 多代理</a>
+  <a href="#async">12. Webhook 与定时任务</a>
+  <a href="#cost">13. 成本、限制与数据边界</a>
+  <a href="#production">14. 生产实现骨架</a>
+  <a href="#openai">15. 对照 OpenAI Agents SDK</a>
+  <a href="#checklist">16. 上线清单与官方链接</a>
+</nav>
+<main>
+  <a class="toplink" href="index.html">← 返回文档目录</a>
+  <h1>Claude Managed Agents 完整讲解</h1>
+  <p class="subtitle">把 Agent 配置、沙箱、会话、事件流、权限、多代理与调度交给托管运行时 · 面向资深程序员</p>
+
+  <div class="callout warn"><p><strong>时效声明：</strong>本文按 2026-06-21 的官方文档整理。Managed Agents 仍是 beta，所有端点要求 <code>managed-agents-2026-04-01</code> beta header；SDK 会自动设置。字段和限制可能继续变化。</p></div>
+  <p class="lead">一句话心智模型：<strong>Messages API 给你模型调用，Claude Agent SDK 给你可嵌入的 agent harness，Managed Agents 再把 harness、沙箱和长跑生命周期变成服务端资源。</strong>你不再手写 while-loop、容器调度、文件检查点和断线恢复，而是围绕 <code>Agent → Environment → Session → Events</code> 四个对象编程。</p>
+
+  <section id="mental">
+    <h2><span class="num">1</span>它到底托管了什么</h2>
+    <p>Managed Agents 不是另一个聊天接口，也不是“把 prompt 存到云端”。它是一个<strong>有状态、可暂停、可恢复、带安全沙箱的 Agent 运行面</strong>：</p>
+    <div class="flow">
+      <div><b>Agent</b>模型、system、工具、MCP、Skills</div>
+      <div><b>Environment</b>运行位置、包、网络与沙箱</div>
+      <div><b>Session</b>一次长跑任务及持久状态</div>
+      <div><b>Events</b>输入、输出、工具、人审与状态</div>
+    </div>
+    <div class="diagram">你的应用
+  │ create / send event / stream / webhook
+  ▼
+Managed Agents control plane
+  ├─ Agent definition (versioned)
+  ├─ Environment definition
+  └─ Session state machine
+       ├─ conversation history
+       ├─ isolated Linux sandbox + checkpoint
+       ├─ agent loop + prompt cache + compaction
+       └─ tools / MCP / custom tool rendezvous</div>
+    <p>Claude 会在沙箱内自主读写文件、执行 Bash、搜索网页、调用 MCP。你的应用负责<strong>定义边界、发任务、处理需要宿主执行的 custom tool、审批高风险动作、接收事件和交付产物</strong>。</p>
+    <div class="callout note"><p>托管的是执行基础设施，不是业务责任。工具权限、网络 allowlist、租户凭证、幂等、预算、rubric 质量和最终副作用仍然属于你的系统。</p></div>
+  </section>
+
+  <section id="choose">
+    <h2><span class="num">2</span>三种构建层级怎么选</h2>
+    <table><thead><tr><th>方案</th><th>你掌控什么</th><th>适合</th><th>代价</th></tr></thead><tbody>
+      <tr><td>Messages API + 手写 loop</td><td>每次模型调用、上下文、工具调度、存储</td><td>强合规、特殊调度、极致可控</td><td>循环、重试、沙箱、恢复都自己造</td></tr>
+      <tr><td>Claude Agent SDK</td><td>在你的进程/基础设施内使用现成 harness</td><td>本地工具、嵌入已有服务、自己运维</td><td>仍需承接运行环境与长跑生命周期</td></tr>
+      <tr><td><strong>Managed Agents</strong></td><td>Agent 配置与策略；Anthropic 承接运行时</td><td>分钟到小时、异步、产物型工作流</td><td>服务端状态、beta 变化、额外 runtime 计费</td></tr>
+    </tbody></table>
+    <h3>优先选 Managed Agents 的信号</h3>
+    <ul>
+      <li>任务需要多轮工具调用，运行几分钟到几小时，而 HTTP 请求不该一直挂住。</li>
+      <li>需要隔离 Linux 容器、文件系统、预装包、网络限制和 checkpoint。</li>
+      <li>用户会中途补充要求、批准工具、暂停后恢复，或者最终下载一组文件。</li>
+      <li>希望用 webhook、cron、多代理和 outcome grader 做工作流，而不是聊天框。</li>
+    </ul>
+    <h3>不该选的信号</h3>
+    <ul>
+      <li>一次请求就能完成的分类、抽取、短问答；Messages API 更直接、更便宜。</li>
+      <li>要求 Zero Data Retention 或 HIPAA BAA 覆盖。当前 Managed Agents 不符合这两项。</li>
+      <li>必须在合作云的 Bedrock / Vertex AI 上跑；当前产品面不是这两个平台的功能。</li>
+      <li>必须精确控制每一轮 prompt 和每个并行工具的调度顺序。</li>
+    </ul>
+  </section>
+
+  <section id="quickstart">
+    <h2><span class="num">3</span>最小可运行主线 <span class="pill core">CORE</span></h2>
+    <p>安装最新 Anthropic SDK，设置 <code>ANTHROPIC_API_KEY</code>。SDK 自动带 beta header；直接 curl 才需要手动带。</p>
+    <pre><span class="code-label">shell</span><button class="copy">复制</button><code>python -m pip install -U anthropic
+export ANTHROPIC_API_KEY="sk-ant-..."</code></pre>
+    <p>最小流程不是“建 Agent 然后 run”，而是<strong>创建三个资源，再打开事件流并发送用户事件</strong>：</p>
+    <pre><span class="code-label">python</span><button class="copy">复制</button><code><span class="kw">import</span> anthropic
+
+client = anthropic.Anthropic()
+
+agent = client.beta.agents.create(
+    name=<span class="str">"Coding Assistant"</span>,
+    model=<span class="str">"claude-opus-4-8"</span>,
+    system=<span class="str">"You are a careful coding agent. Verify every change."</span>,
+    tools=[{<span class="str">"type"</span>: <span class="str">"agent_toolset_20260401"</span>}],
+)
+
+environment = client.beta.environments.create(
+    name=<span class="str">"coding-python"</span>,
+    config={
+        <span class="str">"type"</span>: <span class="str">"cloud"</span>,
+        <span class="str">"networking"</span>: {<span class="str">"type"</span>: <span class="str">"limited"</span>, <span class="str">"allowed_hosts"</span>: []},
+        <span class="str">"packages"</span>: {<span class="str">"pip"</span>: [<span class="str">"pytest"</span>]},
+    },
+)
+
+session = client.beta.sessions.create(
+    agent=agent.id,
+    environment_id=environment.id,
+    title=<span class="str">"Build and test fibonacci.py"</span>,
+)
+
+<span class="kw">with</span> client.beta.sessions.events.stream(session.id) <span class="kw">as</span> stream:
+    client.beta.sessions.events.send(
+        session.id,
+        events=[{
+            <span class="str">"type"</span>: <span class="str">"user.message"</span>,
+            <span class="str">"content"</span>: [{
+                <span class="str">"type"</span>: <span class="str">"text"</span>,
+                <span class="str">"text"</span>: <span class="str">"Create fibonacci.py, add tests, run pytest, and summarize the result."</span>,
+            }],
+        }],
+    )
+
+    <span class="kw">for</span> event <span class="kw">in</span> stream:
+        <span class="kw">match</span> event.type:
+            <span class="kw">case</span> <span class="str">"agent.message"</span>:
+                <span class="kw">for</span> block <span class="kw">in</span> event.content:
+                    <span class="kw">if</span> <span class="fn">hasattr</span>(block, <span class="str">"text"</span>):
+                        <span class="fn">print</span>(block.text, end=<span class="str">""</span>)
+            <span class="kw">case</span> <span class="str">"agent.tool_use"</span>:
+                <span class="fn">print</span>(f<span class="str">"\n[tool: {event.name}]"</span>)
+            <span class="kw">case</span> <span class="str">"session.status_idle"</span>:
+                reason = event.stop_reason
+                <span class="kw">if</span> reason <span class="kw">and</span> reason.type == <span class="str">"end_turn"</span>:
+                    <span class="kw">break</span></code></pre>
+    <div class="callout pitfall"><p><strong>最常见的第一个 bug：</strong>看到 <code>session.status_idle</code> 就 break。idle 也可能是 <code>requires_action</code>，表示它在等 custom tool 结果或人工确认；必须检查 <code>stop_reason.type</code>。</p></div>
+  </section>
+
+  <section id="agent">
+    <h2><span class="num">4</span>Agent：版本化配置，不是运行实例</h2>
+    <p>Agent 把模型、system、tools、MCP servers、skills、multiagent roster 与 metadata 封成可复用资源。Session 才是运行实例。</p>
+    <table><thead><tr><th>字段</th><th>含义</th><th>工程注意</th></tr></thead><tbody>
+      <tr><td><code>model</code></td><td>Claude 4.5 系列及以后</td><td>生产上显式记录模型与 Agent version</td></tr>
+      <tr><td><code>system</code></td><td>固定行为与角色</td><td>任务本身放 user event，不要塞这里</td></tr>
+      <tr><td><code>tools</code></td><td>内置 / MCP / custom tools</td><td>更新时数组全量替换</td></tr>
+      <tr><td><code>skills</code></td><td>按需加载的文件型知识</td><td>每个 session 全体 agent 合计最多 20 个</td></tr>
+      <tr><td><code>multiagent</code></td><td>协调者可委派的 roster</td><td>引用版本在协调者更新时快照固定</td></tr>
+    </tbody></table>
+    <h3>更新语义是乐观并发 + 版本化</h3>
+    <pre><span class="code-label">python</span><button class="copy">复制</button><code>updated = client.beta.agents.update(
+    agent.id,
+    version=agent.version,  <span class="com"># 防止覆盖别人刚做的更新</span>
+    system=<span class="str">"You are a careful coding agent. Always run tests."</span>,
+)</code></pre>
+    <ul>
+      <li>标量字段替换；<code>tools</code> / <code>mcp_servers</code> / <code>skills</code> 是<strong>整数组替换</strong>。</li>
+      <li>无实际变化不会创建新版本。</li>
+      <li>用字符串 Agent ID 创建 Session 会取当时 latest；要灰度就传 <code>{id, version}</code> 固定版本。</li>
+      <li>归档后新 Session 不能再引用，但已有 Session 可继续。</li>
+    </ul>
+    <div class="callout warn"><p>不要把 Agent update 当配置热更新。已有 Session 不会自动变成新 Agent 版本；Session 只允许在 idle 时局部替换自己的 tools / MCP 配置，而且仍是数组全量替换。</p></div>
+  </section>
+
+  <section id="environment">
+    <h2><span class="num">5</span>Environment：可复用配置，每个 Session 独立沙箱</h2>
+    <p>多个 Session 可以引用同一个 Environment，但每个 Session 都得到新的隔离 Linux 容器，<strong>不会共享文件系统</strong>。共享的是构建配置和包缓存。</p>
+    <pre><span class="code-label">python</span><button class="copy">复制</button><code>environment = client.beta.environments.create(
+    name=<span class="str">"report-prod-v3"</span>,
+    config={
+        <span class="str">"type"</span>: <span class="str">"cloud"</span>,
+        <span class="str">"packages"</span>: {
+            <span class="str">"apt"</span>: [<span class="str">"ffmpeg"</span>],
+            <span class="str">"pip"</span>: [<span class="str">"pandas==2.2.0"</span>, <span class="str">"openpyxl"</span>],
+        },
+        <span class="str">"networking"</span>: {
+            <span class="str">"type"</span>: <span class="str">"limited"</span>,
+            <span class="str">"allowed_hosts"</span>: [<span class="str">"api.example.com"</span>],
+            <span class="str">"allow_package_managers"</span>: <span class="kw">False</span>,
+            <span class="str">"allow_mcp_servers"</span>: <span class="kw">True</span>,
+        },
+    },
+)</code></pre>
+    <h3>默认运行面</h3>
+    <ul>
+      <li>Ubuntu 22.04 x86_64，最高 8 GB 内存、10 GB 磁盘。</li>
+      <li>Python 3.12+、Node 20+、Go 1.22+、Rust 1.77+、Java 21+ 等预装。</li>
+      <li>Environment 不版本化。推荐名字带版本，并在业务库记录 session → environment 配置摘要。</li>
+      <li>官方页面存在一处容易误读：参考页写“network disabled by default”，环境配置页写 <code>unrestricted</code> 是 networking 默认值。生产代码不要依赖默认值，务必显式传 <code>limited</code>。</li>
+    </ul>
+    <div class="callout tip"><p>生产基线：<code>limited</code> + 最小 host allowlist；包在 Environment 构建期固定，不要让 Agent 运行中随意 <code>pip install latest</code>。</p></div>
+  </section>
+
+  <section id="session">
+    <h2><span class="num">6</span>Session：必须按状态机写 <span class="pill core">CORE</span></h2>
+    <table><thead><tr><th>状态</th><th>含义</th><th>你的动作</th></tr></thead><tbody>
+      <tr><td><code>idle</code></td><td>等待消息、审批或 custom tool 结果</td><td>检查 stop_reason，别盲目判完成</td></tr>
+      <tr><td><code>running</code></td><td>Agent 正在执行</td><td>流式消费；可 steer / interrupt</td></tr>
+      <tr><td><code>rescheduling</code></td><td>暂时错误，平台自动重试</td><td>观察，不要立即重复创建任务</td></tr>
+      <tr><td><code>terminated</code></td><td>不可恢复错误</td><td>读取 <code>session.error</code>，决定新建 Session</td></tr>
+    </tbody></table>
+    <div class="diagram">create session ──► idle
+                      │ user.message / define_outcome
+                      ▼
+                   running ◄────────────┐
+                      │                 │ tool result / confirmation
+          ┌───────────┼───────────┐     │
+          ▼           ▼           ▼     │
+   idle:end_turn  idle:requires_action  rescheduling
+          │           │                 │
+       完成/续聊   宿主处理事件 ─────────┘
+                      │ unrecoverable
+                      ▼
+                  terminated</div>
+    <h3>持久化边界</h3>
+    <p>会话历史保留到显式删除；idle 时沙箱被 checkpoint，文件、安装包和产物可恢复。但 checkpoint 只保证最后活动后的 <strong>30 天</strong>。跨月业务不能把 Session checkpoint 当永久对象存储。</p>
+    <ul>
+      <li>归档：禁止再发事件，保留历史。</li>
+      <li>删除：永久删除 Session、events 和关联 sandbox。</li>
+      <li>Files、Vaults、Skills、Agents、Environments 是独立资源，不会随 Session 删除。</li>
+    </ul>
+  </section>
+
+  <section id="events">
+    <h2><span class="num">7</span>Events 与流式：把 SSE 当可重放日志</h2>
+    <p>事件名采用 <code>{domain}.{action}</code>。你发送 <code>user.*</code> / <code>system.*</code>，平台返回 <code>agent.*</code> / <code>session.*</code> / <code>span.*</code>。每个事件都有 <code>processed_at</code>；为 null 表示已排队、尚未处理。</p>
+    <h3>生产消费器的四条规则</h3>
+    <ol>
+      <li>按 event ID 去重并落库，断线后 list 历史事件补洞。</li>
+      <li><code>session.status_idle</code> 必须分支处理 <code>end_turn</code> 与 <code>requires_action</code>。</li>
+      <li>收到 <code>session.error</code> 记录原始事件和 Session ID，不能只展示“失败”。</li>
+      <li>把 UI 文本流和业务状态分开；文本可以丢一小段，审批/工具事件不能丢。</li>
+    </ol>
+    <pre><span class="code-label">python</span><button class="copy">复制</button><code><span class="kw">def</span> <span class="fn">consume</span>(session_id: str):
+    seen = <span class="fn">set</span>()
+    events_by_id = {}
+
+    <span class="kw">with</span> client.beta.sessions.events.stream(session_id) <span class="kw">as</span> stream:
+        <span class="kw">for</span> event <span class="kw">in</span> stream:
+            <span class="kw">if</span> event.id <span class="kw">in</span> seen:
+                <span class="kw">continue</span>
+            seen.add(event.id)
+            events_by_id[event.id] = event
+            persist(event)
+
+            <span class="kw">if</span> event.type == <span class="str">"session.error"</span>:
+                raise_session_alert(session_id, event)
+
+            <span class="kw">if</span> event.type != <span class="str">"session.status_idle"</span>:
+                <span class="kw">continue</span>
+
+            reason = event.stop_reason
+            <span class="kw">if</span> reason.type == <span class="str">"end_turn"</span>:
+                <span class="kw">return</span> <span class="str">"done"</span>
+            <span class="kw">if</span> reason.type == <span class="str">"requires_action"</span>:
+                <span class="kw">for</span> blocked_id <span class="kw">in</span> reason.event_ids:
+                    dispatch_required_action(events_by_id[blocked_id])</code></pre>
+    <h3>中途 steer 与 system.message</h3>
+    <p>Session running 时可以追加用户事件改变方向。<code>system.message</code> 用于轮次之间更新系统级约束，但当前只支持 Opus 4.8；且 Session 正因 <code>requires_action</code> idle 时不能发送。</p>
+    <div class="callout note"><p>这和 Messages API 的“重发完整 messages 数组”完全不同：Managed Agents 在服务端保存 event history，你操作的是追加式日志。</p></div>
+  </section>
+
+  <section id="tools">
+    <h2><span class="num">8</span>工具、权限与宿主回调</h2>
+    <h3>内置工具</h3>
+    <p><code>agent_toolset_20260401</code> 默认启用 Bash、Read、Write、Edit、Glob、Grep、Web Fetch、Web Search。工具输出超过 100,000 tokens 时会写入沙箱文件，模型只收到预览和文件路径。</p>
+    <pre><span class="code-label">json</span><button class="copy">复制</button><code>{
+  "type": "agent_toolset_20260401",
+  "default_config": {
+    "enabled": false,
+    "permission_policy": {"type": "always_ask"}
+  },
+  "configs": [
+    {"name": "read", "enabled": true, "permission_policy": {"type": "always_allow"}},
+    {"name": "grep", "enabled": true, "permission_policy": {"type": "always_allow"}},
+    {"name": "write", "enabled": true},
+    {"name": "bash", "enabled": true}
+  ]
+}</code></pre>
+    <table><thead><tr><th>工具来源</th><th>在哪里执行</th><th>默认审批</th><th>回填事件</th></tr></thead><tbody>
+      <tr><td>内置 agent toolset</td><td>Managed sandbox</td><td><code>always_allow</code></td><td>需要时 <code>user.tool_confirmation</code></td></tr>
+      <tr><td>MCP toolset</td><td>远端 MCP server</td><td><code>always_ask</code></td><td><code>user.tool_confirmation</code></td></tr>
+      <tr><td>Custom tool</td><td><strong>你的应用</strong></td><td>不受 policy 管</td><td><code>user.custom_tool_result</code></td></tr>
+    </tbody></table>
+    <div class="callout pitfall"><p>最危险的默认值是内置 toolset 的 <code>always_allow</code>。一旦同时给了 unrestricted networking 和 Bash，模型就有广泛外部副作用能力。生产上应默认 deny/ask，再逐项开放只读工具。</p></div>
+    <h3>Custom tool 是一次 rendezvous</h3>
+    <ol>
+      <li>平台发 <code>agent.custom_tool_use</code>。</li>
+      <li>Session 进入 <code>idle / requires_action</code>。</li>
+      <li>你的 worker 校验 schema、租户、幂等键、权限并执行。</li>
+      <li>发送 <code>user.custom_tool_result</code>，所有阻塞项解决后恢复 running。</li>
+    </ol>
+  </section>
+
+  <section id="resources">
+    <h2><span class="num">9</span>文件、GitHub、MCP、Skills 与 Vault</h2>
+    <h3>文件：上传一次，Session 里挂载副本</h3>
+    <pre><span class="code-label">python</span><button class="copy">复制</button><code><span class="kw">from</span> pathlib <span class="kw">import</span> Path
+
+source = client.beta.files.upload(file=Path(<span class="str">"requirements.pdf"</span>))
+session = client.beta.sessions.create(
+    agent=agent.id,
+    environment_id=environment.id,
+    resources=[{
+        <span class="str">"type"</span>: <span class="str">"file"</span>,
+        <span class="str">"file_id"</span>: source.id,
+        <span class="str">"mount_path"</span>: <span class="str">"/workspace/requirements.pdf"</span>,
+    }],
+)</code></pre>
+    <p>单 Session 最多挂 100 个文件。输出约定放 <code>/mnt/session/outputs/</code>，Session idle 后按 <code>scope_id=session.id</code> 列出和下载。</p>
+    <h3>GitHub：repo mount 和 GitHub MCP 是两条通道</h3>
+    <ul>
+      <li><code>github_repository</code> resource 负责 clone/mount 代码。</li>
+      <li>GitHub MCP 负责 issue / PR 等 API 动作。</li>
+      <li>clone token 放 Session resource；MCP OAuth 更适合放 Vault。两者不要混为一谈。</li>
+      <li>仓库有缓存，同一 repo 的后续 Session 启动更快。</li>
+    </ul>
+    <h3>Vault：每个最终用户一组凭证</h3>
+    <p>Vault 是 workspace-scoped 资源，Session 创建时传 <code>vault_ids</code>。支持 MCP OAuth、static bearer 等凭证，平台可代管 OAuth refresh。任何同 workspace API key 都能引用 Vault，所以要在你的业务层做 user → vault 映射和授权。</p>
+    <h3>Skills：按需加载的文件型专业知识</h3>
+    <p>Skills 和大 system prompt 的区别是 progressive disclosure：只有任务相关时才进入上下文。可挂 Anthropic 预置的 xlsx / pptx / docx / pdf 技能，或自建版本化 Skill。</p>
+  </section>
+
+  <section id="outcomes">
+    <h2><span class="num">10</span>Outcomes：从“聊完”升级为“验收通过” <span class="pill new">研究预览</span></h2>
+    <p><code>user.define_outcome</code> 同时给目标、Markdown rubric 和最大迭代数。Harness 会创建一个<strong>独立上下文的 grader</strong>，评价产物并把反馈交回 Agent 继续修改。</p>
+    <pre><span class="code-label">python</span><button class="copy">复制</button><code>client.beta.sessions.events.send(
+    session.id,
+    events=[{
+        <span class="str">"type"</span>: <span class="str">"user.define_outcome"</span>,
+        <span class="str">"description"</span>: <span class="str">"Build a tested Python package and write its README."</span>,
+        <span class="str">"rubric"</span>: {
+            <span class="str">"type"</span>: <span class="str">"text"</span>,
+            <span class="str">"content"</span>: <span class="str">"""# Correctness
+- pytest passes
+- public functions have type hints
+# Deliverables
+- package and README exist under /mnt/session/outputs/"""</span>,
+        },
+        <span class="str">"max_iterations"</span>: <span class="numlit">5</span>,  <span class="com"># 默认 3，最大 20</span>
+    }],
+)</code></pre>
+    <p>关键事件是 <code>span.outcome_evaluation_start/ongoing/end</code>。结束结果有 <code>satisfied</code>、<code>needs_revision</code>、<code>max_iterations_reached</code>、<code>failed</code>、<code>interrupted</code>。</p>
+    <div class="callout warn"><p>Outcome 不是形式化验证。Grader 仍是模型，rubric 含糊会得到含糊评价。能用 pytest、schema validator、编译器、财务勾稽等确定性工具验证的条件，应该先由工具产出硬证据，再让 grader 做语义判断。</p></div>
+  </section>
+
+  <section id="multiagent">
+    <h2><span class="num">11</span>多代理：共享沙箱，隔离上下文</h2>
+    <p>Coordinator 的 <code>multiagent.agents</code> 声明可委派 roster。子代理有各自 Agent 配置和事件线程，但共享同一 Session 的 sandbox、filesystem 与 Vault credentials。</p>
+    <pre><span class="code-label">python</span><button class="copy">复制</button><code>coordinator = client.beta.agents.create(
+    name=<span class="str">"Engineering Lead"</span>,
+    model=<span class="str">"claude-opus-4-8"</span>,
+    system=<span class="str">"Delegate security review and test design, then synthesize."</span>,
+    tools=[{<span class="str">"type"</span>: <span class="str">"agent_toolset_20260401"</span>}],
+    multiagent={
+        <span class="str">"type"</span>: <span class="str">"coordinator"</span>,
+        <span class="str">"agents"</span>: [
+            {<span class="str">"type"</span>: <span class="str">"agent"</span>, <span class="str">"id"</span>: reviewer.id, <span class="str">"version"</span>: reviewer.version},
+            {<span class="str">"type"</span>: <span class="str">"agent"</span>, <span class="str">"id"</span>: test_writer.id},
+        ],
+    },
+)</code></pre>
+    <ul>
+      <li>最多列 20 个 unique agents；只能委派一层，depth &gt; 1 被忽略。</li>
+      <li>最多 25 个并发 threads；同一 Agent 可启动多个副本。</li>
+      <li>primary event stream 只给压缩视图；排障要进入具体 thread stream。</li>
+      <li>roster 在 Coordinator 创建/更新时固定版本，不会自动跟随子 Agent latest。</li>
+      <li>MCP servers 是 Agent-scoped；Vault credentials 是 Session-scoped，所有线程可引用。</li>
+    </ul>
+    <div class="callout tip"><p>适合并行调研、专业分工、能力升级。不适合把一个线性任务硬拆成多 Agent；协调成本和 token 会真实增加。</p></div>
+  </section>
+
+  <section id="async">
+    <h2><span class="num">12</span>Webhook 与定时任务：把长跑接进产品</h2>
+    <h3>SSE 用于实时，Webhook 用于状态通知</h3>
+    <p>Webhook 只发 event type 和资源 ID，不带完整对象；收到后再 GET，避免 retry 投递陈旧快照。签名头是 <code>X-Webhook-Signature</code>，SDK <code>unwrap()</code> 同时验签和拒绝超过 5 分钟的 payload。</p>
+    <ul>
+      <li>用顶层 event ID 幂等；同 ID 是重试。</li>
+      <li>不保证顺序，按 <code>created_at</code> 排，不按到达时间猜。</li>
+      <li>任何 3xx 都算失败；约 20 次连续失败会自动 disable endpoint。</li>
+      <li>Webhook 必须是公网 HTTPS 443，不能解析到私网 IP。</li>
+    </ul>
+    <h3>Scheduled deployments</h3>
+    <p>Deployment 把 Agent、Environment、resources、Vault 和首条 <code>user.message</code> 固定成 cron。使用五段 POSIX cron + IANA timezone，分钟级粒度，触发可能有最多 10 秒 jitter。每组织最多 1,000 个 deployment。</p>
+    <div class="callout note"><p>调度的是“每次新建一个 Session”，不是唤醒同一 Session。需要累积记忆时，应显式挂 Memory Store 或把上次结果作为文件/数据库资源输入。</p></div>
+  </section>
+
+  <section id="cost">
+    <h2><span class="num">13</span>成本、限制与数据边界</h2>
+    <h3>两维计费</h3>
+    <table><thead><tr><th>项目</th><th>计费</th></tr></thead><tbody>
+      <tr><td>模型 tokens</td><td>按所选 Claude 模型价格；prompt cache 倍率相同</td></tr>
+      <tr><td>Session runtime</td><td><strong>$0.08 / session-hour</strong>，只计 <code>running</code>，毫秒级计量</td></tr>
+      <tr><td>Web search</td><td>$10 / 1,000 searches + 搜索内容 token</td></tr>
+      <tr><td>Idle / rescheduling / terminated</td><td>不计 runtime</td></tr>
+    </tbody></table>
+    <p>Managed Agents 没有 Batch 折扣，也不套 fast mode premium、<code>inference_geo</code> multiplier 或长上下文 premium。Session runtime 已替代 code-execution container-hour，不再重复收容器费。</p>
+    <h3>固定限制速查</h3>
+    <ul>
+      <li>Create endpoints：300 RPM / organization；Read/list/stream：600 RPM。</li>
+      <li>每 Session 最多 100 个挂载文件、20 个 Skills、25 个并发 Agent threads。</li>
+      <li>每 Coordinator roster 最多 20 个 unique agents，且只支持一层委派。</li>
+      <li>每组织最多 1,000 个 scheduled deployments。</li>
+      <li>checkpoint 最后活动后保留 30 天；event history 到删除为止。</li>
+    </ul>
+    <h3>数据与合规</h3>
+    <div class="callout pitfall"><p>由于服务端持久化会话历史、沙箱状态和输出，Managed Agents 当前不支持 Zero Data Retention，也不在 HIPAA BAA 覆盖内。删除 Session 不会级联删除独立上传的 Files、Vaults、Skills、Agents 或 Environments。</p></div>
+  </section>
+
+  <section id="production">
+    <h2><span class="num">14</span>生产实现骨架：控制面与事件 worker 分离</h2>
+    <div class="diagram">POST /jobs
+  ├─ validate tenant / budget / agent version
+  ├─ create Session (idempotency key in your DB)
+  ├─ persist job_id ↔ session_id
+  └─ send user.message or user.define_outcome
+
+event worker
+  ├─ stream SSE; reconnect + list history on gaps
+  ├─ persist event IDs
+  ├─ dispatch custom tools / approvals
+  ├─ update user-facing job state
+  └─ on end_turn: list outputs + notify
+
+webhook worker
+  ├─ unwrap signature
+  ├─ dedupe webhook event ID
+  └─ GET latest Session before acting</div>
+    <h3>业务表至少记录这些</h3>
+    <table><thead><tr><th>字段</th><th>为什么</th></tr></thead><tbody>
+      <tr><td><code>tenant_id / user_id / vault_id</code></td><td>防止跨租户引用凭证</td></tr>
+      <tr><td><code>agent_id / agent_version / environment_id</code></td><td>可复现与灰度回滚</td></tr>
+      <tr><td><code>session_id / last_event_id</code></td><td>恢复消费和排障</td></tr>
+      <tr><td><code>status / stop_reason / error</code></td><td>区分完成、待审批、平台重试、终止</td></tr>
+      <tr><td><code>usage / runtime / budget</code></td><td>成本保护</td></tr>
+      <tr><td><code>output_file_ids</code></td><td>交付与生命周期清理</td></tr>
+    </tbody></table>
+    <h3>可靠性底线</h3>
+    <ul>
+      <li>创建 Job 先落库再调 API；网络超时后先按业务幂等键查，别盲建第二个 Session。</li>
+      <li>Custom tool 自己做 schema 校验、超时、幂等和审计；工具描述不是安全边界。</li>
+      <li>对 <code>running</code> 设置业务级 deadline，超时发 interrupt，不让任务静默烧 token。</li>
+      <li>产物复制到你自己的对象存储；30 天 checkpoint 不是归档策略。</li>
+      <li>记录原始 event，不只记录拼接后的聊天文本。</li>
+    </ul>
+  </section>
+
+  <section id="openai">
+    <h2><span class="num">15</span>Claude Managed Agents vs OpenAI Agents SDK</h2>
+    <table><thead><tr><th>维度</th><th>Claude Managed Agents</th><th>OpenAI Agents SDK</th></tr></thead><tbody>
+      <tr><td>产品形态</td><td>服务端托管 Agent 运行面</td><td>嵌入你应用的开源/客户端框架</td></tr>
+      <tr><td>核心对象</td><td>Agent / Environment / Session / Events</td><td>Agent / Runner / RunContext / RunResult</td></tr>
+      <tr><td>Agent loop</td><td>Anthropic 服务端执行</td><td>Runner 在你的进程执行</td></tr>
+      <tr><td>沙箱</td><td>Cloud 或 self-hosted Environment</td><td>框架不替你提供通用持久沙箱</td></tr>
+      <tr><td>会话</td><td>服务端持久 history + sandbox checkpoint</td><td>Sessions 接口由你的存储承接</td></tr>
+      <tr><td>多代理</td><td>Coordinator + persistent threads，共享沙箱</td><td>handoff 或 agent-as-tool，由 Runner 编排</td></tr>
+      <tr><td>工具审批</td><td>permission policy + requires_action events</td><td>tool hooks / guardrails / 应用逻辑</td></tr>
+      <tr><td>可观测性</td><td>Session event timeline + Console tracing</td><td>SDK tracing / spans</td></tr>
+      <tr><td>异步调度</td><td>Webhook + Scheduled Deployments 内建</td><td>队列、worker、cron 由你部署</td></tr>
+      <tr><td>成本</td><td>token + $0.08 running session-hour</td><td>模型/工具成本 + 你自己的基础设施</td></tr>
+    </tbody></table>
+    <p><strong>不要把两者简单当成“Anthropic 版 / OpenAI 版同一个 SDK”。</strong>OpenAI Agents SDK 更像应用框架；Claude Managed Agents 更像带 Agent harness 的托管作业平台。真正对位时，应拿 OpenAI Agents SDK + 你的队列/容器/状态库，与 Managed Agents 的整套运行面比较。</p>
+    <div class="callout tip"><p>组合策略也成立：低延迟同步路由用应用内 SDK；几分钟以上、产物型、需要沙箱的任务交给 Managed Agents。架构不必只选一家、只选一层。</p></div>
+  </section>
+
+  <section id="checklist">
+    <h2><span class="num">16</span>上线清单与官方链接</h2>
+    <h3>上线前逐项确认</h3>
+    <ul>
+      <li>固定 Agent version，Environment 显式 limited networking。</li>
+      <li>内置写/Bash/MCP 工具设置审批策略；custom tool 做宿主鉴权。</li>
+      <li>事件去重、补历史、区分 idle stop_reason、处理 session.error。</li>
+      <li>Session / Files / Vaults 分别定义保留与删除策略。</li>
+      <li>预算同时限制 tokens、running wall time、outcome iterations、子 Agent fan-out。</li>
+      <li>Webhook 验签、幂等、不依赖投递顺序。</li>
+      <li>产物离站归档；不要依赖 30 天 checkpoint。</li>
+      <li>确认业务不要求 ZDR / HIPAA BAA。</li>
+    </ul>
+    <h3>本文核对的官方资料</h3>
+    <ul>
+      <li><a href="https://platform.claude.com/docs/en/managed-agents/overview">Managed Agents overview</a>、<a href="https://platform.claude.com/docs/en/managed-agents/quickstart">Quickstart</a></li>
+      <li><a href="https://platform.claude.com/docs/en/managed-agents/agent-setup">Agent setup</a>、<a href="https://platform.claude.com/docs/en/managed-agents/environments">Cloud environments</a></li>
+      <li><a href="https://platform.claude.com/docs/en/managed-agents/events-and-streaming">Events and streaming</a>、<a href="https://platform.claude.com/docs/en/managed-agents/permission-policies">Permission policies</a></li>
+      <li><a href="https://platform.claude.com/docs/en/managed-agents/multi-agent">Multiagent sessions</a>、<a href="https://platform.claude.com/docs/en/managed-agents/define-outcomes">Outcomes</a></li>
+      <li><a href="https://platform.claude.com/docs/en/managed-agents/reference">Reference and rate limits</a>、<a href="https://platform.claude.com/docs/en/about-claude/pricing">Pricing</a></li>
+    </ul>
+  </section>
+</main>
+</div>
+<script>
+  document.querySelectorAll("pre").forEach(pre=>{
+    const btn=pre.querySelector(".copy");
+    if(!btn)return;
+    btn.addEventListener("click",()=>{
+      const code=pre.querySelector("code").innerText;
+      navigator.clipboard.writeText(code).then(()=>{
+        const old=btn.textContent;btn.textContent="已复制";
+        setTimeout(()=>btn.textContent=old,1200);
+      });
+    });
+  });
+  const toc=document.getElementById("toc");
+  const menuBtn=document.getElementById("menuBtn");
+  menuBtn.addEventListener("click",()=>toc.classList.toggle("open"));
+  toc.querySelectorAll("a[href^='#']").forEach(a=>a.addEventListener("click",()=>toc.classList.remove("open")));
+  const links=[...document.querySelectorAll("nav.toc a[href^='#']")];
+  const sections=links.map(a=>document.querySelector(a.getAttribute("href"))).filter(Boolean);
+  const observer=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(!entry.isIntersecting)return;
+      links.forEach(a=>a.classList.toggle("active",a.getAttribute("href")==="#"+entry.target.id));
+    });
+  },{rootMargin:"-15% 0px -75% 0px"});
+  sections.forEach(section=>observer.observe(section));
+</script>
+</body>
+</html>
