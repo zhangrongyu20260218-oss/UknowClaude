@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Gemini API 完整讲解 · 文本生成 · 面向高级程序员</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel2:#1b1f2a; --fg:#e6e9ef; --muted:#9aa3b2;
+    --accent:#5a8dee; --accent2:#9b72f2; --line:#272c38; --code-bg:#11141b;
+    --kw:#c678dd; --str:#98c379; --num:#d19a66; --com:#5c6370; --fn:#61afef; --punct:#abb2bf;
+    --ok:#2ea043; --warn:#d29922; --danger:#f85149;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;line-height:1.75}
+  .layout{display:flex;max-width:1500px;margin:0 auto}
+  nav.toc{width:310px;flex:0 0 310px;position:sticky;top:0;align-self:flex-start;height:100vh;
+    overflow-y:auto;border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav.toc h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:6px;
+    font-size:14px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--fg);background:var(--panel2)}
+  nav.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--panel2)}
+  nav.toc .brand{font-weight:700;font-size:18px;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+  nav.toc .brand small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:4px;-webkit-text-fill-color:var(--muted)}
+  nav.toc .xref{display:block;margin-top:18px;font-size:13px;color:var(--accent2);text-decoration:none;padding:8px 10px;border:1px dashed var(--line);border-radius:8px}
+  main{flex:1 1 auto;min-width:0;padding:40px 56px 120px;max-width:1000px}
+  h1{font-size:33px;line-height:1.25;margin:0 0 8px}
+  .subtitle{color:var(--muted);font-size:16px;margin:0 0 24px}
+  section{padding-top:48px;margin-top:-24px}
+  section>h2{font-size:25px;border-bottom:1px solid var(--line);padding-bottom:10px;margin:8px 0 18px}
+  section>h2 .num{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:19px;margin:28px 0 10px;color:#f0f2f6}
+  h4{font-size:16px;margin:20px 0 8px;color:var(--accent2)}
+  p{margin:12px 0}
+  a{color:var(--accent2)}
+  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    font-size:.88em;background:var(--panel2);padding:2px 6px;border-radius:5px;color:#a9c7ff}
+  ul,ol{padding-left:24px}
+  li{margin:6px 0}
+  strong{color:#fff}
+  hr{border:none;border-top:1px solid var(--line);margin:32px 0}
+  .lead{font-size:17px;color:#cfd6e1;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;background:var(--panel)}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600}
+  td code{background:var(--code-bg)}
+  tr:hover td{background:var(--panel2)}
+  .callout{border-radius:10px;padding:14px 16px 14px 46px;margin:18px 0;position:relative;border:1px solid var(--line);font-size:15px}
+  .callout::before{position:absolute;left:14px;top:13px;font-size:18px;font-weight:700}
+  .callout.note{background:rgba(90,141,238,.08);border-color:rgba(90,141,238,.35)}
+  .callout.note::before{content:"ℹ";color:var(--accent)}
+  .callout.tip{background:rgba(46,160,67,.08);border-color:rgba(46,160,67,.35)}
+  .callout.tip::before{content:"✓";color:var(--ok)}
+  .callout.warn{background:rgba(210,153,34,.08);border-color:rgba(210,153,34,.4)}
+  .callout.warn::before{content:"⚠";color:var(--warn)}
+  .callout.pitfall{background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.4)}
+  .callout.pitfall::before{content:"✕";color:var(--danger)}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .codewrap{margin:16px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--code-bg)}
+  .tabbar{display:flex;background:var(--panel2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .tabbar button{background:none;border:none;color:var(--muted);padding:9px 16px;cursor:pointer;font-size:13px;font-family:inherit;border-bottom:2px solid transparent}
+  .tabbar button.active{color:var(--fg);border-bottom-color:var(--accent)}
+  .tabbar .lang{margin-left:auto;color:var(--com);font-size:12px;padding:9px 14px;align-self:center}
+  .panes{position:relative}
+  pre{margin:0;padding:16px 18px;overflow-x:auto;font-size:13.5px;line-height:1.6;font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre code{background:none;padding:0;color:var(--punct);font-size:inherit}
+  .pane{display:none}.pane.active{display:block}
+  .copybtn{position:absolute;top:8px;right:8px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;z-index:2}
+  .copybtn:hover{color:var(--fg);border-color:var(--accent)}
+  .t-kw{color:var(--kw)} .t-str{color:var(--str)} .t-num{color:var(--num)} .t-com{color:var(--com);font-style:italic}
+  .t-fn{color:var(--fn)} .t-pun{color:var(--punct)} .t-bi{color:var(--accent)}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--muted);background:var(--panel2);margin-left:8px;vertical-align:middle}
+  .pill.beta{color:var(--warn);border-color:rgba(210,153,34,.4)}
+  .pill.dep{color:var(--danger);border-color:rgba(248,81,73,.4)}
+  .menu-toggle{display:none}
+  @media(max-width:980px){
+    nav.toc{position:fixed;left:0;top:0;z-index:50;transform:translateX(-100%);transition:transform .2s;width:285px;flex-basis:285px}
+    nav.toc.open{transform:translateX(0)}
+    main{padding:64px 20px 100px}
+    .menu-toggle{display:block;position:fixed;top:12px;left:12px;z-index:60;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer}
+  }
+</style>
+</head>
+<body>
+<button class="menu-toggle" id="menuToggle">☰ 目录</button>
+<div class="layout">
+<nav class="toc" id="toc">
+  <div class="brand">Gemini API · 文本生成
+    <small>面向高级程序员的完整讲解 · google-genai SDK + REST</small>
+  </div>
+  <h2>正文</h2>
+  <a href="#overview">1 · 概览与心智模型</a>
+  <a href="#auth">2 · 认证、SDK 与端点</a>
+  <a href="#request">3 · 请求结构详解</a>
+  <a href="#response">4 · 响应结构与 finishReason</a>
+  <a href="#streaming">5 · 流式响应（SSE）</a>
+  <a href="#chat">6 · 多轮对话</a>
+  <a href="#thinking">7 · Thinking / 推理</a>
+  <a href="#structured">8 · 结构化输出（JSON）</a>
+  <a href="#functions">9 · 函数调用</a>
+  <a href="#grounding">10 · Google 搜索接地</a>
+  <a href="#codeexec">11 · 代码执行</a>
+  <a href="#multimodal">12 · 多模态输入</a>
+  <a href="#caching">13 · 上下文缓存</a>
+  <a href="#tokens">14 · Token 计数</a>
+  <a href="#safety">15 · 安全设置</a>
+  <a href="#errors">16 · 错误处理与限流</a>
+  <a href="#appendix">17 · 附录 / 速查</a>
+  <a class="xref" href="gemini-image-api-guide.html">→ 图像生成单独成篇（Nano Banana / Imagen）</a>
+</nav>
+<main>
+  <h1>Google Gemini API 完整讲解 · 文本生成</h1>
+  <p class="subtitle">写给懂工程、懂 HTTP/SDK 的程序员。以官方 <code>google-genai</code> Python SDK 为主线，cURL/REST 对照。聚焦经典 <code>generateContent</code> 接口。</p>
+
+  <div class="callout warn">
+    <p><strong>时效与来源说明（务必先读）。</strong>本文核对日期 <strong>2026-06-30</strong>。事实来自：Gemini API 的 <strong>v1beta machine-readable discovery 文档</strong>（rev 20260629，权威）、官方 <strong><code>googleapis/python-genai</code> SDK 源码</strong>与 <strong><code>google-gemini/cookbook</code></strong>，以及对 <code>ai.google.dev</code> 官方页的搜索摘要。编写时本环境出口代理<strong>封锁了对 <code>ai.google.dev</code> 的直接抓取</strong>，故凡涉及<strong>易变的精确数字（定价、各模型上下文/输出上限、限流配额、thinkingBudget 各档范围）</strong>，请以官方文档与控制台为准——文中已用 ⚠️ 标注此类项。</p>
+  </div>
+
+  <!-- 1 -->
+  <section id="overview">
+    <h2><span class="num">1</span>概览与心智模型</h2>
+
+    <h3>1.1 2026 年的格局：两套生成接口并存</h3>
+    <p>调用 Gemini 生成内容，目前有两条 API 表面：</p>
+    <ul>
+      <li><strong>经典 <code>generateContent</code> / <code>streamGenerateContent</code></strong>（文档中标为 "Generate Content API (Legacy)"）。用 <code>contents</code>/<code>parts</code> 结构，返回 <code>candidates</code>，函数调用走 <code>functionCall</code>/<code>functionResponse</code> part，接地元数据在 <code>candidates[].groundingMetadata</code>。官方明确：<strong>它仍是生产负载的推荐路径、仍受支持</strong>。</li>
+      <li><strong>新的 Interactions API</strong>（<code>client.interactions.create(...)</code>，REST 路径不同），面向 agentic / 服务端状态管理，是新项目的推荐接口。但它<strong>尚未暴露接地引用元数据</strong>等部分能力。</li>
+    </ul>
+    <div class="callout note"><p>本指南<strong>聚焦经典 <code>generateContent</code></strong>——它字段稳定、SDK 支持完整、是绝大多数现有生产代码所用。需要接地引用、要渲染搜索建议时也只能用它。涉及差异处会点出 Interactions API。</p></div>
+
+    <h3>1.2 无状态</h3>
+    <p>经典接口和 Claude/OpenAI 一样<strong>无状态</strong>：服务端不保存对话，每次请求都要带全量历史（<code>contents</code> 数组）。所谓"多轮"是你在客户端不断追加（见第 6 节）。Interactions API 则改为服务端维护历史（<code>previous_interaction_id</code>）。</p>
+
+    <h3>1.3 当前模型阵容（2026 年中）</h3>
+    <p>Gemini 已演进到 3.x / 3.5 系列，2.5 系列正在退役、2.0 系列已关停。</p>
+    <table>
+      <tr><th>模型</th><th>精确 model id</th><th>上下文(输入)</th><th>最大输出</th><th>Thinking</th><th>状态</th></tr>
+      <tr><td>Gemini 3.5 Flash</td><td><code>gemini-3.5-flash</code>（别名 <code>gemini-flash-latest</code>）</td><td>1M</td><td>~64–65K ⚠️</td><td>是（<code>thinkingLevel</code>）</td><td>GA</td></tr>
+      <tr><td>Gemini 3.1 Flash-Lite</td><td><code>gemini-3.1-flash-lite</code></td><td>1M</td><td>~64K ⚠️</td><td>是</td><td>GA</td></tr>
+      <tr><td>Gemini 3.1 Pro</td><td><code>gemini-3.1-pro-preview</code></td><td>1M</td><td>~64K ⚠️</td><td>是</td><td>Preview</td></tr>
+      <tr><td>Gemini 2.5 Pro</td><td><code>gemini-2.5-pro</code></td><td>1M</td><td>65,536</td><td>是（<code>thinkingBudget</code>）</td><td>计划 2026 年退役 ⚠️</td></tr>
+      <tr><td>Gemini 2.5 Flash</td><td><code>gemini-2.5-flash</code></td><td>1M</td><td>—</td><td>是</td><td>计划 2026 年退役 ⚠️</td></tr>
+      <tr><td>Gemini 2.0 Flash</td><td><code>gemini-2.0-flash</code></td><td>—</td><td>—</td><td>—</td><td><strong>已于 2026-06-01 关停</strong></td></tr>
+    </table>
+    <div class="callout warn"><p>⚠️ 模型 ID 的 <code>-preview</code> 后缀、各模型精确"最大输出"（64K vs 65,536 vs ~65K）、2.5 系列确切退役日期、以及定价，都属易变项——调用前请以官方 <a href="https://ai.google.dev/gemini-api/docs/models">Models 页</a> 与 <a href="https://ai.google.dev/gemini-api/docs/pricing">Pricing 页</a> 为准。可用 <code>GET /v1beta/models</code> 运行时查询。</p></div>
+
+    <h3>1.4 与 Claude/OpenAI 的几个心智差异</h3>
+    <ul>
+      <li>认证用 <strong><code>x-goog-api-key</code></strong> 头（不是 <code>x-api-key</code> / <code>Authorization: Bearer</code>）。</li>
+      <li>API 版本在 <strong>URL 路径段</strong>（<code>v1beta</code>），<strong>没有</strong>日期式版本请求头。</li>
+      <li>助手角色叫 <strong><code>model</code></strong>（不是 <code>assistant</code>）。</li>
+      <li>方法名是动词冒号式：<code>models/{model}:generateContent</code>。</li>
+    </ul>
+  </section>
+
+  <!-- 2 -->
+  <section id="auth">
+    <h2><span class="num">2</span>认证、SDK 与端点</h2>
+
+    <h3>2.1 官方 SDK：google-genai</h3>
+    <div class="callout pitfall"><p>官方 Python SDK 是 <strong><code>google-genai</code></strong>（<code>from google import genai</code>），2025 年 5 月 GA。旧的 <strong><code>google-generativeai</code>（<code>import google.generativeai</code>）已弃用</strong>（弃用生效 2025-11-30），不再获得新功能——新代码一律用 <code>google-genai</code>。</p></div>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><span class="lang">安装 + 最简调用</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-com"># pip install -U google-genai</span>
+<span class="t-kw">from</span> google <span class="t-kw">import</span> genai
+
+<span class="t-com"># 自动读取环境变量 GEMINI_API_KEY（也接受 GOOGLE_API_KEY）</span>
+client = genai.Client()
+<span class="t-com"># 或显式： client = genai.Client(api_key="YOUR_API_KEY")</span>
+
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-3.5-flash"</span>,
+    contents=<span class="t-str">"用一句话解释 CAP 定理"</span>,
+)
+<span class="t-fn">print</span>(resp.text)   <span class="t-com"># 便捷属性：拼接所有文本 part</span></code></pre></div>
+      </div>
+    </div>
+
+    <h3>2.2 REST 端点与认证</h3>
+    <table>
+      <tr><th>项</th><th>值</th></tr>
+      <tr><td>基础 URL</td><td><code>https://generativelanguage.googleapis.com</code></td></tr>
+      <tr><td>API 版本</td><td>路径段 <code>v1beta</code>（新功能在此；另有 <code>v1</code>）</td></tr>
+      <tr><td>非流式</td><td><code>POST /v1beta/models/{model}:generateContent</code></td></tr>
+      <tr><td>流式</td><td><code>POST /v1beta/models/{model}:streamGenerateContent</code>（加 <code>?alt=sse</code> 走 SSE）</td></tr>
+      <tr><td>认证</td><td>请求头 <code>x-goog-api-key: &lt;KEY&gt;</code>（官方首选；历史上也支持 <code>?key=KEY</code> query 参数）</td></tr>
+    </table>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="curl" class="active">cURL</button><span class="lang">基础调用</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="curl"><pre><code>curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> \
+  -H <span class="t-str">'Content-Type: application/json'</span> \
+  -X POST \
+  -d <span class="t-str">'{
+    "contents": [
+      { "parts": [ { "text": "用一句话解释 CAP 定理" } ] }
+    ]
+  }'</span></code></pre></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="request">
+    <h2><span class="num">3</span>请求结构详解</h2>
+    <p>顶层字段：<code>contents</code>（必填）、<code>systemInstruction</code>、<code>generationConfig</code>、<code>safetySettings</code>、<code>tools</code>/<code>toolConfig</code>。</p>
+
+    <h3>3.1 contents / role / parts</h3>
+    <ul>
+      <li><code>contents</code> 是数组，每个元素是一个 <code>Content</code>：<code>role</code> 为 <code>"user"</code> 或 <code>"model"</code>（单轮可省略 role），<code>parts</code> 是数组。</li>
+      <li>一个 <code>part</code> 通常是 <code>{"text": "..."}</code>，也可是 <code>inlineData</code>/<code>fileData</code>（多模态，第 12 节）、<code>functionCall</code>/<code>functionResponse</code>（第 9 节）等。</li>
+      <li><strong>系统指令不放在 contents 里</strong>，而是顶层 <code>systemInstruction</code>。</li>
+    </ul>
+
+    <h3>3.2 systemInstruction</h3>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><button data-tab="curl">cURL</button><span class="lang">系统指令</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-3.5-flash"</span>,
+    contents=<span class="t-str">"如何安全地读一个大 JSON 文件？"</span>,
+    config=types.GenerateContentConfig(
+        system_instruction=<span class="t-str">"你是一个严谨的后端工程助手，尽量给可运行示例。"</span>,
+    ),
+)</code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code>curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> -H <span class="t-str">'Content-Type: application/json'</span> -X POST -d <span class="t-str">'{
+    "systemInstruction": { "parts": [ { "text": "你是一个严谨的后端工程助手。" } ] },
+    "contents": [ { "parts": [ { "text": "如何安全地读一个大 JSON 文件？" } ] } ]
+  }'</span></code></pre></div>
+      </div>
+    </div>
+
+    <h3>3.3 generationConfig 字段</h3>
+    <table>
+      <tr><th>字段（REST / SDK）</th><th>范围 / 默认</th><th>说明</th></tr>
+      <tr><td><code>temperature</code></td><td>0.0–2.0 ⚠️（旧文档曾写 0.0–1.0，随模型不同）</td><td>采样温度</td></tr>
+      <tr><td><code>topP</code> / <code>top_p</code></td><td>0.0–1.0</td><td>核采样</td></tr>
+      <tr><td><code>topK</code> / <code>top_k</code></td><td>≥1（部分较新模型已忽略 ⚠️）</td><td>Top-K 采样</td></tr>
+      <tr><td><code>maxOutputTokens</code></td><td>上限=模型最大输出</td><td>输出 token 上限</td></tr>
+      <tr><td><code>stopSequences</code></td><td>最多 5 个</td><td>命中即停（不含在输出中）</td></tr>
+      <tr><td><code>candidateCount</code></td><td>1–8，默认 1</td><td>返回候选数</td></tr>
+      <tr><td><code>responseMimeType</code> / <code>responseSchema</code></td><td>—</td><td>结构化输出（第 8 节）</td></tr>
+      <tr><td><code>thinkingConfig</code></td><td>—</td><td>推理控制（第 7 节）</td></tr>
+    </table>
+    <div class="callout warn"><p>⚠️ <code>temperature</code> 上限（1.0 还是 2.0）随模型不同，是文档间最易冲突处；部分较新模型不再支持 <code>topK</code>。逐模型核对。</p></div>
+    <div class="callout note"><p>SDK 里这些参数都通过 <code>config=types.GenerateContentConfig(...)</code> 传入（旧 SDK 是 <code>generation_config=</code>）。</p></div>
+  </section>
+
+  <!-- 4 -->
+  <section id="response">
+    <h2><span class="num">4</span>响应结构与 finishReason</h2>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="json" class="active">响应 JSON</button><span class="lang">结构</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="json"><pre><code>{
+  <span class="t-str">"candidates"</span>: [
+    {
+      <span class="t-str">"content"</span>: { <span class="t-str">"role"</span>: <span class="t-str">"model"</span>, <span class="t-str">"parts"</span>: [ { <span class="t-str">"text"</span>: <span class="t-str">"..."</span> } ] },
+      <span class="t-str">"finishReason"</span>: <span class="t-str">"STOP"</span>,
+      <span class="t-str">"safetyRatings"</span>: [ <span class="t-com">/* category + probability */</span> ],
+      <span class="t-str">"index"</span>: <span class="t-num">0</span>
+    }
+  ],
+  <span class="t-str">"usageMetadata"</span>: {
+    <span class="t-str">"promptTokenCount"</span>: <span class="t-num">10</span>,
+    <span class="t-str">"candidatesTokenCount"</span>: <span class="t-num">25</span>,
+    <span class="t-str">"totalTokenCount"</span>: <span class="t-num">35</span>,
+    <span class="t-str">"thoughtsTokenCount"</span>: <span class="t-num">0</span>      <span class="t-com">// thinking 模型才有</span>
+  },
+  <span class="t-str">"modelVersion"</span>: <span class="t-str">"gemini-3.5-flash"</span>
+}</code></pre></div>
+      </div>
+    </div>
+    <div class="callout note"><p>SDK 里 <code>resp.text</code> 便捷拼接所有文本 part；更底层是 <code>resp.candidates[0].content.parts[*]</code>。访问前注意可能有非文本 part（thought、functionCall 等）。</p></div>
+
+    <h3>4.1 finishReason 取值</h3>
+    <table>
+      <tr><th>值</th><th>含义</th></tr>
+      <tr><td><code>STOP</code></td><td>正常结束（偶有 STOP 但 parts 为空的边界情况）</td></tr>
+      <tr><td><code>MAX_TOKENS</code></td><td>达到 <code>maxOutputTokens</code>（thinking 模型可能思考耗尽 token 而文本为空）</td></tr>
+      <tr><td><code>SAFETY</code></td><td>安全策略拦截（看 <code>safetyRatings</code>）</td></tr>
+      <tr><td><code>RECITATION</code></td><td>疑似复述受保护内容</td></tr>
+      <tr><td><code>OTHER</code></td><td>其他边界情况</td></tr>
+    </table>
+    <p>官方完整枚举通常还含 <code>FINISH_REASON_UNSPECIFIED</code>、<code>BLOCKLIST</code>、<code>PROHIBITED_CONTENT</code>、<code>SPII</code>、<code>MALFORMED_FUNCTION_CALL</code>、<code>LANGUAGE</code> 等（以 <a href="https://ai.google.dev/api/generate-content">Candidate 参考页</a> 为准）。</p>
+    <p><code>usageMetadata</code> 关键字段：<code>promptTokenCount</code>（输入）、<code>candidatesTokenCount</code>（输出）、<code>totalTokenCount</code>、<code>thoughtsTokenCount</code>（思考）、缓存场景的 <code>cachedContentTokenCount</code>。</p>
+  </section>
+
+  <!-- 5 -->
+  <section id="streaming">
+    <h2><span class="num">5</span>流式响应（SSE）</h2>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><button data-tab="curl">cURL</button><button data-tab="sse">SSE 线格式</button><span class="lang">streaming</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code>stream = client.models.generate_content_stream(
+    model=<span class="t-str">"gemini-3.5-flash"</span>,
+    contents=<span class="t-str">"写一篇关于会魔法的背包的短故事"</span>,
+)
+<span class="t-kw">for</span> chunk <span class="t-kw">in</span> stream:
+    <span class="t-fn">print</span>(chunk.text, end=<span class="t-str">""</span>, flush=<span class="t-kw">True</span>)
+    <span class="t-com"># 或更底层： chunk.candidates[0].content.parts[0].text</span></code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code>curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> \
+  -H <span class="t-str">'Content-Type: application/json'</span> \
+  --no-buffer -X POST \
+  -d <span class="t-str">'{ "contents": [ { "parts": [ { "text": "详细解释 AI 的工作原理" } ] } ] }'</span></code></pre></div>
+        <div class="pane" data-pane="sse"><pre><code>data: {"candidates":[{"content":{"role":"model","parts":[{"text":"AI "}]},"index":0}]}
+
+data: {"candidates":[{"content":{"parts":[{"text":"works by "}]},"index":0}]}
+
+data: {"candidates":[{"content":{"parts":[{"text":"..."}]},"finishReason":"STOP","index":0}],
+       "usageMetadata":{"promptTokenCount":8,"candidatesTokenCount":40,"totalTokenCount":48}}</code></pre></div>
+      </div>
+    </div>
+    <div class="callout warn"><p><strong>必须加 <code>?alt=sse</code></strong> 才是标准 SSE 的 <code>data:</code> 行格式；不加时返回的是一个<strong>逗号分隔的 JSON 对象数组流</strong>，需要自己做增量 JSON 解析。最后一个 chunk 携带 <code>finishReason</code> 与 <code>usageMetadata</code>。⚠️ 上面 SSE 样例结构由非流式 candidate 结构推得（官方页被代理封锁，未逐字抓取），结构正确但字段顺序请以真实调用为准。</p></div>
+  </section>
+
+  <!-- 6 -->
+  <section id="chat">
+    <h2><span class="num">6</span>多轮对话</h2>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（chat session）</button><button data-tab="curl">cURL（手动维护历史）</button><span class="lang">multi-turn</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+
+chat = client.chats.create(
+    model=<span class="t-str">"gemini-3.5-flash"</span>,
+    history=[
+        types.Content(role=<span class="t-str">"user"</span>,  parts=[types.Part(text=<span class="t-str">"你好"</span>)]),
+        types.Content(role=<span class="t-str">"model"</span>, parts=[types.Part(text=<span class="t-str">"你好！有什么可以帮你？"</span>)]),
+    ],
+)
+<span class="t-fn">print</span>(chat.send_message(<span class="t-str">"我家有两只狗。"</span>).text)
+<span class="t-fn">print</span>(chat.send_message(<span class="t-str">"那我家一共有几只爪子？"</span>).text)   <span class="t-com"># 会记得"两只狗"</span>
+<span class="t-com"># chat.get_history() 取历史；chat.send_message_stream(...) 流式</span></code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code><span class="t-com"># REST 无 chat 概念：把每轮追加进 contents，user / model 交替</span>
+curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> -H <span class="t-str">'Content-Type: application/json'</span> -X POST -d <span class="t-str">'{
+    "contents": [
+      { "role": "user",  "parts": [ { "text": "你好，我家有两只狗。" } ] },
+      { "role": "model", "parts": [ { "text": "好的，两只狗。" } ] },
+      { "role": "user",  "parts": [ { "text": "那我家一共有几只爪子？" } ] }
+    ]
+  }'</span></code></pre></div>
+      </div>
+    </div>
+    <div class="callout note"><p>新的 Interactions API 改为<strong>服务端</strong>维护历史（传 <code>previous_interaction_id</code> 而非全量 contents），这是它与经典接口的主要差异之一。</p></div>
+  </section>
+
+  <!-- 7 -->
+  <section id="thinking">
+    <h2><span class="num">7</span>Thinking / 推理</h2>
+    <p>Gemini 2.5 与 3.x 都是"思考模型"：给出答案前先生成内部推理 token。这些 token 按输出计费，并单独报在 <code>thoughtsTokenCount</code>。</p>
+
+    <h3>7.1 两套控制：thinkingBudget（2.5）vs thinkingLevel（3.x）</h3>
+    <p>通过 <code>generationConfig.thinkingConfig</code>（SDK：<code>types.ThinkingConfig</code>）控制。字段（核对自官方 SDK 源码）：</p>
+    <table>
+      <tr><th>字段（SDK / REST）</th><th>类型</th><th>说明</th></tr>
+      <tr><td><code>thinking_budget</code> / <code>thinkingBudget</code></td><td>int</td><td><strong>0 = 关闭，-1 = 自动（动态）</strong>；范围/默认随模型而定。Gemini 2.5 用它。</td></tr>
+      <tr><td><code>thinking_level</code> / <code>thinkingLevel</code></td><td>enum</td><td><code>MINIMAL</code> / <code>LOW</code> / <code>MEDIUM</code> / <code>HIGH</code>。Gemini 3.x 用它（思考常开，按档调）。</td></tr>
+      <tr><td><code>include_thoughts</code> / <code>includeThoughts</code></td><td>bool</td><td>true 时返回思考摘要 part</td></tr>
+    </table>
+    <div class="callout pitfall"><p>两者<strong>互斥/分代</strong>：2.5 系列用 <code>thinkingBudget</code>，3.x 用 <code>thinkingLevel</code>。把 <code>thinkingLevel</code> 用在 2.5/Flash-Lite 上会报 <code>thinking_level not supported</code>。</p></div>
+
+    <h3>7.2 thinkingBudget 各档（Gemini 2.5）</h3>
+    <table>
+      <tr><th>模型</th><th>范围 ⚠️</th><th>默认</th><th><code>0</code> 可关闭？</th></tr>
+      <tr><td>2.5 Pro</td><td>128 – 32768</td><td>动态(-1)</td><td><strong>否</strong>（不能关，下限 128）</td></tr>
+      <tr><td>2.5 Flash</td><td>0 – 24576</td><td>动态(-1)</td><td>是</td></tr>
+      <tr><td>2.5 Flash-Lite</td><td>512 – 24576</td><td><strong>默认关闭</strong></td><td>是（需 -1 显式开启动态）</td></tr>
+    </table>
+    <div class="callout warn"><p>⚠️ 上表各档具体数字来自搜索摘要、非逐字抓取；<code>0</code>/<code>-1</code> 语义来自官方 SDK 源码（可靠）。精确范围请以 <a href="https://ai.google.dev/gemini-api/docs/thinking">官方 thinking 页</a> 为准。设超范围值时 API 会就近调整。</p></div>
+
+    <h3>7.3 取思考摘要与示例</h3>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（2.5）</button><button data-tab="curl">cURL（2.5）</button><span class="lang">thinking</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-2.5-flash"</span>,
+    contents=<span class="t-str">"逐步解释天空为何是蓝色的。"</span>,
+    config=types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(
+            thinking_budget=<span class="t-num">4096</span>,    <span class="t-com"># 0=关闭(Flash系)；-1=动态</span>
+            include_thoughts=<span class="t-kw">True</span>,   <span class="t-com"># 返回思考摘要</span>
+        ),
+    ),
+)
+<span class="t-kw">for</span> part <span class="t-kw">in</span> resp.candidates[<span class="t-num">0</span>].content.parts:
+    <span class="t-kw">if</span> <span class="t-kw">not</span> part.text:
+        <span class="t-kw">continue</span>
+    <span class="t-kw">if</span> part.thought:                       <span class="t-com"># thought=True 即思考摘要</span>
+        <span class="t-fn">print</span>(<span class="t-str">"[思考摘要]"</span>, part.text)
+    <span class="t-kw">else</span>:
+        <span class="t-fn">print</span>(<span class="t-str">"[答案]"</span>, part.text)
+<span class="t-fn">print</span>(<span class="t-str">"思考 token:"</span>, resp.usage_metadata.thoughts_token_count)</code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code>curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> -H <span class="t-str">'Content-Type: application/json'</span> -d <span class="t-str">'{
+    "contents": [ { "parts": [ { "text": "逐步解释天空为何是蓝色的。" } ] } ],
+    "generationConfig": {
+      "thinkingConfig": { "includeThoughts": true, "thinkingBudget": 4096 }
+    }
+  }'</span>
+<span class="t-com"># 响应里思考 part 形如 {"thought": true, "text": "..."}；usageMetadata.thoughtsTokenCount 计思考</span></code></pre></div>
+      </div>
+    </div>
+    <p>多轮/函数调用时，part 上的 <code>thoughtSignature</code>（不透明签名）用于跨轮保留推理上下文，应原样回填。</p>
+  </section>
+
+  <!-- 8 -->
+  <section id="structured">
+    <h2><span class="num">8</span>结构化输出（JSON）</h2>
+    <p>强制 JSON 输出靠 <code>generationConfig</code> 里两个字段配合：</p>
+    <ul>
+      <li><code>responseMimeType</code>：<code>application/json</code>（或 <code>text/x.enum</code> 见下），默认 <code>text/plain</code>。</li>
+      <li><code>responseSchema</code>：OpenAPI 3.0 子集 schema。<strong>设了它就必须把 <code>responseMimeType</code> 设为 <code>application/json</code></strong>。</li>
+    </ul>
+
+    <h3>8.1 Python：Pydantic / TypedDict / Enum 都支持</h3>
+    <p>SDK 接受 Pydantic <code>BaseModel</code>、<code>list[Model]</code>、<code>TypedDict</code>、<code>Enum</code>、或原始 dict/<code>Schema</code> 作为 <code>response_schema</code>，并把校验后的对象放进 <code>response.parsed</code>。</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（Pydantic）</button><span class="lang">structured output</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google <span class="t-kw">import</span> genai
+<span class="t-kw">from</span> pydantic <span class="t-kw">import</span> BaseModel
+
+client = genai.Client()
+
+<span class="t-kw">class</span> <span class="t-bi">Ingredient</span>(BaseModel):
+    name: <span class="t-bi">str</span>
+    quantity: <span class="t-bi">str</span>
+
+<span class="t-kw">class</span> <span class="t-bi">Recipe</span>(BaseModel):
+    recipe_name: <span class="t-bi">str</span>
+    ingredients: <span class="t-bi">list</span>[Ingredient]
+
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-2.5-flash"</span>,
+    contents=<span class="t-str">"列举几个常见饼干配方。"</span>,
+    config={
+        <span class="t-str">"response_mime_type"</span>: <span class="t-str">"application/json"</span>,
+        <span class="t-str">"response_schema"</span>: <span class="t-bi">list</span>[Recipe],
+    },
+)
+recipes: <span class="t-bi">list</span>[Recipe] = resp.parsed   <span class="t-com"># 已校验的 Pydantic 对象</span>
+<span class="t-fn">print</span>(resp.text)                       <span class="t-com"># 原始 JSON 字符串</span></code></pre></div>
+      </div>
+    </div>
+
+    <h3>8.2 responseSchema vs responseJsonSchema</h3>
+    <p>另有一个较新字段 <code>responseJsonSchema</code>，接受<strong>标准 JSON Schema</strong>（支持 <code>$ref</code>/<code>$defs</code>/<code>oneOf</code>/<code>prefixItems</code> 等）。</p>
+    <table>
+      <tr><th></th><th><code>responseSchema</code></th><th><code>responseJsonSchema</code></th></tr>
+      <tr><td>方言</td><td>OpenAPI 3.0 子集</td><td>标准 JSON Schema</td></tr>
+      <tr><td>互斥</td><td colspan="2">二选一，不可同设；两者都要求 <code>responseMimeType: application/json</code></td></tr>
+      <tr><td>何时用</td><td>默认；Pydantic/TypedDict 便利</td><td>原生 JSON Schema，或前者处理不对时回退</td></tr>
+    </table>
+    <p><code>propertyOrdering</code>（非标准扩展）可控制生成 JSON 的属性顺序——模型对顺序敏感，schema 与示例顺序不一致会损质量。</p>
+
+    <h3>8.3 枚举模式</h3>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（text/x.enum）</button><button data-tab="curl">cURL（JSON Schema enum）</button><span class="lang">enum</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">import</span> enum
+<span class="t-kw">class</span> <span class="t-bi">Instrument</span>(enum.Enum):
+    PERCUSSION = <span class="t-str">"Percussion"</span>; STRING = <span class="t-str">"String"</span>
+    WOODWIND = <span class="t-str">"Woodwind"</span>; BRASS = <span class="t-str">"Brass"</span>; KEYBOARD = <span class="t-str">"Keyboard"</span>
+
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-2.5-flash"</span>,
+    contents=<span class="t-str">"双簧管属于哪类乐器？"</span>,
+    config={
+        <span class="t-str">"response_mime_type"</span>: <span class="t-str">"text/x.enum"</span>,   <span class="t-com"># 返回单个枚举串，无 JSON 引号</span>
+        <span class="t-str">"response_schema"</span>: Instrument,
+    },
+)
+<span class="t-fn">print</span>(resp.text)      <span class="t-com"># "Woodwind"</span>
+<span class="t-fn">print</span>(resp.parsed)    <span class="t-com"># Instrument.WOODWIND</span></code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code>curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> -H <span class="t-str">'Content-Type: application/json'</span> -d <span class="t-str">'{
+    "contents": [{ "parts": [{ "text": "判断情感。" }] }],
+    "generationConfig": {
+      "responseMimeType": "application/json",
+      "responseJsonSchema": {
+        "type": "object",
+        "properties": { "sentiment": { "type": "string", "enum": ["positive","negative","neutral"] } },
+        "required": ["sentiment"]
+      }
+    }
+  }'</span></code></pre></div>
+      </div>
+    </div>
+    <div class="callout warn"><p>⚠️ <code>text/x.enum</code> 由 SDK 解析逻辑与搜索摘要佐证，未从官方页逐字确认；字段名（<code>responseMimeType</code>/<code>responseSchema</code>/<code>responseJsonSchema</code>/<code>propertyOrdering</code>）核对自官方 SDK 源码（可靠）。</p></div>
+  </section>
+
+  <!-- 9 -->
+  <section id="functions">
+    <h2><span class="num">9</span>函数调用</h2>
+    <p>模型只<strong>请求</strong>调用你声明的函数（返回 <code>functionCall</code> part），由你执行并回填 <code>functionResponse</code>。字段核对自 v1beta discovery 文档（rev 20260629）。</p>
+
+    <h3>9.1 声明与配置</h3>
+    <ul>
+      <li><code>tools[].functionDeclarations[]</code>：每个含 <code>name</code> / <code>description</code> / <code>parameters</code>（OpenAPI 子集 Schema）或 <code>parametersJsonSchema</code>（原始 JSON Schema）。</li>
+      <li><code>toolConfig.functionCallingConfig.mode</code>：<code>AUTO</code>（默认）/ <code>ANY</code>（强制至少调一个）/ <code>NONE</code>（禁止）/ <code>VALIDATED</code>（较新）；配 <code>allowedFunctionNames</code> 限定可调函数。</li>
+      <li><strong>并行调用</strong>：单次响应可含多个 <code>functionCall</code> part；Gemini 3 起每个 <code>functionCall</code> 带唯一 <code>id</code>，回填 <code>functionResponse</code> 时应回显同一 <code>id</code>。</li>
+    </ul>
+
+    <h3>9.2 完整手动循环</h3>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（手动循环）</button><button data-tab="curl">cURL（两步）</button><span class="lang">function calling</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google <span class="t-kw">import</span> genai
+<span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+
+client = genai.Client()
+
+function = types.FunctionDeclaration(
+    name=<span class="t-str">'get_current_weather'</span>,
+    description=<span class="t-str">'查询某地当前天气'</span>,
+    parameters_json_schema={
+        <span class="t-str">'type'</span>: <span class="t-str">'object'</span>,
+        <span class="t-str">'properties'</span>: {<span class="t-str">'location'</span>: {<span class="t-str">'type'</span>: <span class="t-str">'string'</span>, <span class="t-str">'description'</span>: <span class="t-str">'城市，如 Boston, MA'</span>}},
+        <span class="t-str">'required'</span>: [<span class="t-str">'location'</span>],
+    },
+)
+tool = types.Tool(function_declarations=[function])
+
+<span class="t-kw">def</span> <span class="t-fn">get_current_weather</span>(location: <span class="t-bi">str</span>) -&gt; <span class="t-bi">str</span>:
+    <span class="t-kw">return</span> <span class="t-str">f"{location} 当前 21°C，晴。"</span>
+
+user_turn = types.Content(role=<span class="t-str">'user'</span>, parts=[types.Part.from_text(text=<span class="t-str">'波士顿天气如何？'</span>)])
+resp = client.models.generate_content(
+    model=<span class="t-str">'gemini-3.5-flash'</span>, contents=[user_turn],
+    config=types.GenerateContentConfig(tools=[tool]),
+)
+
+contents = [user_turn]
+<span class="t-kw">while</span> resp.function_calls:                          <span class="t-com"># 可能并行多个</span>
+    contents.append(resp.candidates[<span class="t-num">0</span>].content)       <span class="t-com"># 原样回填 model 轮</span>
+    tool_parts = []
+    <span class="t-kw">for</span> fc <span class="t-kw">in</span> resp.function_calls:
+        <span class="t-kw">try</span>:
+            payload = {<span class="t-str">'result'</span>: get_current_weather(**fc.args)}
+        <span class="t-kw">except</span> Exception <span class="t-kw">as</span> e:
+            payload = {<span class="t-str">'error'</span>: <span class="t-bi">str</span>(e)}
+        tool_parts.append(types.Part.from_function_response(name=fc.name, response=payload))
+    contents.append(types.Content(role=<span class="t-str">'tool'</span>, parts=tool_parts))
+    resp = client.models.generate_content(
+        model=<span class="t-str">'gemini-3.5-flash'</span>, contents=contents,
+        config=types.GenerateContentConfig(tools=[tool]),
+    )
+
+<span class="t-fn">print</span>(resp.text)</code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code><span class="t-com"># 第一步：声明工具</span>
+curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> -H <span class="t-str">'Content-Type: application/json'</span> -X POST -d <span class="t-str">'{
+    "contents": [{"role":"user","parts":[{"text":"波士顿天气如何？"}]}],
+    "tools": [{"functionDeclarations":[{
+      "name":"get_current_weather",
+      "description":"查询某地当前天气",
+      "parameters":{"type":"object","properties":{"location":{"type":"string"}},"required":["location"]}
+    }]}],
+    "toolConfig": {"functionCallingConfig":{"mode":"ANY","allowedFunctionNames":["get_current_weather"]}}
+  }'</span>
+<span class="t-com"># 模型返回 part: {"functionCall":{"name":"get_current_weather","args":{"location":"Boston, MA"},"id":"fc_abc"}}</span>
+
+<span class="t-com"># 第二步：把历史 + functionResponse 一起回传（回显 id）</span>
+<span class="t-com"># contents 追加 {"role":"model",...functionCall...} 和</span>
+<span class="t-com">#   {"role":"tool","parts":[{"functionResponse":{"name":"get_current_weather","id":"fc_abc","response":{"result":"21C 晴"}}}]}</span></code></pre></div>
+      </div>
+    </div>
+    <div class="callout note"><p>若直接把 Python 可调用对象传进 <code>tools=[get_current_weather]</code> 且不关闭自动函数调用，SDK 会<strong>替你跑完整循环</strong>。要手动控制就传 <code>automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)</code>。</p></div>
+  </section>
+
+  <!-- 10 -->
+  <section id="grounding">
+    <h2><span class="num">10</span>Google 搜索接地（Grounding）</h2>
+    <p>让模型用 Google 搜索结果支撑回答。当前模型用 <code>google_search</code> 工具（旧版 Gemini 1.5 用 <code>google_search_retrieval</code> + <code>dynamicThreshold</code> 动态检索，是关键迁移点）。</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><button data-tab="curl">cURL</button><span class="lang">grounding</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google.genai.types <span class="t-kw">import</span> Tool, GenerateContentConfig, GoogleSearch
+
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-3.5-flash"</span>,
+    contents=<span class="t-str">"2024 年欧洲杯冠军是谁？"</span>,
+    config=GenerateContentConfig(tools=[Tool(google_search=GoogleSearch())]),
+)
+gm = resp.candidates[<span class="t-num">0</span>].grounding_metadata
+<span class="t-fn">print</span>(resp.text)
+<span class="t-fn">print</span>(gm.web_search_queries)              <span class="t-com"># 模型发起的查询</span>
+<span class="t-fn">print</span>(gm.search_entry_point.rendered_content)  <span class="t-com"># 必须渲染的"搜索建议"HTML</span>
+<span class="t-fn">print</span>(gm.grounding_chunks, gm.grounding_supports)  <span class="t-com"># 引用来源与文本跨度映射</span></code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code>curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> -H <span class="t-str">'Content-Type: application/json'</span> -X POST -d <span class="t-str">'{
+    "contents": [{"parts":[{"text":"2024 年欧洲杯冠军是谁？"}]}],
+    "tools": [{"google_search": {}}]
+  }'</span>
+<span class="t-com"># 旧版动态检索： "tools":[{"google_search_retrieval":{"dynamic_retrieval_config":{"mode":"MODE_DYNAMIC","dynamic_threshold":0.3}}}]</span></code></pre></div>
+      </div>
+    </div>
+    <div class="callout warn"><p><strong>合规要求</strong>：使用 Google 搜索接地时，<strong>必须展示</strong>响应里 <code>searchEntryPoint.renderedContent</code> 提供的"Google 搜索建议"（即可直接渲染的 HTML/CSS chip），且点按要跳转到 Google 搜索结果页。详见 <a href="https://ai.google.dev/gemini-api/terms">Gemini API 附加条款</a>。⚠️ 条款逐字以官方页为准。</p></div>
+    <p>响应 <code>groundingMetadata</code> 关键字段：<code>webSearchQueries</code>、<code>searchEntryPoint</code>（含 <code>renderedContent</code>）、<code>groundingChunks</code>（每项 <code>web.{uri,title}</code>）、<code>groundingSupports</code>（<code>segment</code> 文本跨度 + <code>groundingChunkIndices</code> 引用映射 + <code>confidenceScores</code>）。据此可构建行内引用。</p>
+    <div class="callout note"><p>新的 Interactions API <strong>尚未暴露</strong>接地引用元数据 / <code>searchEntryPoint</code>——要渲染搜索建议和引用，用经典 <code>generateContent</code>。</p></div>
+  </section>
+
+  <!-- 11 -->
+  <section id="codeexec">
+    <h2><span class="num">11</span>代码执行</h2>
+    <p>开 <code>code_execution</code> 工具，模型可在沙箱里写并运行 <strong>Python</strong> 代码（仅 Python），返回 <code>executableCode</code> 与 <code>codeExecutionResult</code> part。</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><button data-tab="curl">cURL</button><span class="lang">code execution</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-3.5-flash"</span>,
+    contents=<span class="t-str">"前 50 个质数之和是多少？生成并运行 Python 代码。"</span>,
+    config=types.GenerateContentConfig(
+        tools=[types.Tool(code_execution=types.ToolCodeExecution())],
+    ),
+)
+<span class="t-kw">for</span> part <span class="t-kw">in</span> resp.candidates[<span class="t-num">0</span>].content.parts:
+    <span class="t-kw">if</span> part.text:                    <span class="t-fn">print</span>(part.text)
+    <span class="t-kw">if</span> part.executable_code:         <span class="t-fn">print</span>(<span class="t-str">"CODE:\n"</span>, part.executable_code.code)
+    <span class="t-kw">if</span> part.code_execution_result:   <span class="t-fn">print</span>(part.code_execution_result.outcome,
+                                            part.code_execution_result.output)
+    <span class="t-kw">if</span> part.inline_data:             <span class="t-kw">pass</span>   <span class="t-com"># 生成的图（如 matplotlib）在 inline_data.data</span></code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code>curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> -H <span class="t-str">'Content-Type: application/json'</span> -X POST -d <span class="t-str">'{
+    "contents": [{"parts":[{"text":"前 50 个质数之和？生成并运行 Python。"}]}],
+    "tools": [{"code_execution": {}}]
+  }'</span>
+<span class="t-com"># 响应 part: executableCode{language:"PYTHON",code} 与 codeExecutionResult{outcome:"OUTCOME_OK",output}</span></code></pre></div>
+      </div>
+    </div>
+    <ul>
+      <li>语言<strong>仅 Python</strong>（<code>executableCode.language</code> 枚举只有 <code>PYTHON</code>）；<code>outcome</code> ∈ <code>OUTCOME_OK</code>/<code>OUTCOME_FAILED</code>/<code>OUTCOME_DEADLINE_EXCEEDED</code>。</li>
+      <li>沙箱预装 NumPy / pandas / Matplotlib 等；支持文件 I/O（用 File API 传 csv/txt），matplotlib 图作为图片输出。</li>
+      <li>⚠️ 单次运行上限约 30 秒、出错最多重试约 5 次（来自搜索摘要，未逐字核对）。</li>
+    </ul>
+  </section>
+
+  <!-- 12 -->
+  <section id="multimodal">
+    <h2><span class="num">12</span>多模态输入</h2>
+    <p>把图片 / PDF / 音频 / 视频作为<strong>输入</strong>传给模型（输出仍是文本——这是"理解"，不是图像生成）。两种传法：</p>
+    <ul>
+      <li><strong>内联 <code>inline_data</code></strong>：小文件，直接 base64（<code>mime_type</code> + <code>data</code>）。</li>
+      <li><strong><code>file_data</code> + File API</strong>：较大文件先 <code>client.files.upload(...)</code> 上传，再用返回的 <code>file_uri</code> 引用。</li>
+    </ul>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（File API）</button><button data-tab="inline">Python（inline base64）</button><span class="lang">multimodal in</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-com"># 较大文件：上传一次，多次引用</span>
+f = client.files.upload(file=<span class="t-str">"report.pdf"</span>)
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-3.5-flash"</span>,
+    contents=[f, <span class="t-str">"总结这份报告的关键结论"</span>],
+)
+<span class="t-fn">print</span>(resp.text)</code></pre></div>
+        <div class="pane" data-pane="inline"><pre><code><span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+
+img = <span class="t-fn">open</span>(<span class="t-str">"diagram.png"</span>, <span class="t-str">"rb"</span>).read()
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-3.5-flash"</span>,
+    contents=[
+        types.Part.from_bytes(data=img, mime_type=<span class="t-str">"image/png"</span>),
+        <span class="t-str">"这张架构图有什么单点故障？"</span>,
+    ],
+)</code></pre></div>
+      </div>
+    </div>
+    <p>part 结构（核对自 discovery doc）：内联 <code>{"inline_data":{"mime_type":...,"data":"&lt;base64&gt;"}}</code>；File API 引用 <code>{"file_data":{"mime_type":...,"file_uri":"&lt;uri&gt;"}}</code>。视频还可用 <code>videoMetadata</code> 设裁剪起止/FPS，<code>mediaResolution</code> 控制 token 成本。</p>
+
+    <h4>各模态的 token 成本与上限</h4>
+    <table>
+      <tr><th>模态</th><th>token 成本 ⚠️</th><th>上限 / 备注 ⚠️</th></tr>
+      <tr><td>图片</td><td>随分辨率/分块而定</td><td>png/jpeg/webp/heic/heif</td></tr>
+      <tr><td>PDF / 文档</td><td>每页约 258 tokens</td><td>最多 1,000 页、≤ 50MB；真正的文档视觉（含图表/版面）</td></tr>
+      <tr><td>音频</td><td>每秒约 32 tokens（1 分钟≈1,920）</td><td>单次最多约 9.5 小时；16Kbps 单声道</td></tr>
+      <tr><td>视频</td><td>默认每帧约 258 / 低分辨率每帧约 66（默认 1 FPS）</td><td>默认约 1 小时 / 低分辨率约 3 小时（1M 上下文）</td></tr>
+    </table>
+
+    <h4>File API 要点</h4>
+    <ul>
+      <li>上传 <code>client.files.upload(file=...)</code> 返回含 <code>name</code>（<code>files/{id}</code>）/ <code>uri</code> / <code>mimeType</code> / <code>state</code> 的对象；大文件/视频异步处理，<strong>用前等 <code>state == "ACTIVE"</code></strong>。</li>
+      <li>限制：单文件约 <strong>2GB</strong>、单项目约 <strong>20GB</strong>；<strong>保存 48 小时</strong>后自动删除（见 <code>expirationTime</code>）。⚠️</li>
+      <li>操作：<code>files.list()</code> / <code>files.get()</code> / <code>files.delete(name=...)</code>。</li>
+    </ul>
+    <div class="callout warn"><p>⚠️ part 字段结构核对自 discovery doc（可靠）；但<strong>各模态 token 单价、时长/页数/大小上限、48 小时保存期、2GB/20GB 配额</strong>来自搜索摘要。尤其注意：内联数据上限历史为 <strong>20MB</strong>，2025 年官方博客宣布升到 <strong>100MB</strong>，不同官方页可能仍写 20MB——超过就改用 File API。具体数字请以官方 <a href="https://ai.google.dev/gemini-api/docs/files">Files</a> 及各模态页为准。</p></div>
+  </section>
+
+  <!-- 13 -->
+  <section id="caching">
+    <h2><span class="num">13</span>上下文缓存</h2>
+    <p>大段前缀（长文档、长系统指令、few-shot）在多次请求中复用时，缓存能让命中部分大幅降价（响应里见 <code>cachedContentTokenCount</code>）。Gemini 有<strong>两种缓存模式</strong>：</p>
+    <table>
+      <tr><th>模式</th><th>开启方式</th><th>存储费</th><th>最小 token 门槛 ⚠️</th></tr>
+      <tr><td><strong>隐式缓存</strong></td><td><strong>2.5+ 默认开启</strong>，无需写代码；前缀命中自动降价</td><td>无</td><td>2.5 Flash 约 1,024 / 2.5 Pro 约 2,048</td></tr>
+      <tr><td><strong>显式缓存</strong></td><td>手动建 <code>CachedContent</code>（<code>client.caches.create()</code>），保证折扣</td><td>有（按 token×时长）</td><td>约 32,768（历史曾为 4,096，需核对）</td></tr>
+    </table>
+    <p>关键字段（核对自 v1beta discovery doc 的 <code>CachedContent</code>）：<code>model</code>（必填、不可变，<code>models/{model}</code>）、<code>contents</code>/<code>systemInstruction</code>/<code>tools</code>（input-only、不可变）、<code>ttl</code>（时长串，<strong>默认 1 小时</strong>）或 <code>expireTime</code>（绝对时间）、<code>displayName</code>。请求里用顶层 <code>cachedContent</code>（= 缓存 <code>name</code>，如 <code>cachedContents/abc123</code>）引用。缓存命中 token 通常约<strong> 9 折优惠</strong>（即按标准输入价的约 10% 计 ⚠️）。</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（概念示例）</button><span class="lang">context caching</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+
+cache = client.caches.create(
+    model=<span class="t-str">"gemini-2.5-flash"</span>,
+    config=types.CreateCachedContentConfig(
+        system_instruction=<span class="t-str">"你是这份大文档的专家。"</span>,
+        contents=[big_document],          <span class="t-com"># 要缓存的稳定前缀</span>
+        ttl=<span class="t-str">"3600s"</span>,
+    ),
+)
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-2.5-flash"</span>,
+    contents=<span class="t-str">"总结要点"</span>,
+    config=types.GenerateContentConfig(cached_content=cache.name),
+)
+<span class="t-fn">print</span>(resp.usage_metadata.cached_content_token_count)  <span class="t-com"># 命中的缓存 token</span>
+
+<span class="t-com"># 管理： client.caches.list() / update(name, config=...ttl) / delete(name=...)</span></code></pre></div>
+      </div>
+    </div>
+    <div class="callout tip"><p>多数场景<strong>无需显式缓存</strong>——2.5+ 的隐式缓存已自动给前缀命中降价且无存储费。只有需要"保证命中折扣"或缓存很大且高频复用时才手动建 <code>CachedContent</code>。把稳定前缀放在最前、易变内容放最后，命中率最高。</p></div>
+    <div class="callout warn"><p>⚠️ 字段名/方法签名核对自 v1beta discovery doc（可靠）；但<strong>显式缓存最小 token 门槛（32,768 vs 历史 4,096）、9 折优惠、存储单价</strong>来自搜索摘要/博客，请以官方 <a href="https://ai.google.dev/gemini-api/docs/caching">Caching</a> 与 <a href="https://ai.google.dev/gemini-api/docs/pricing">Pricing</a> 页为准。</p></div>
+  </section>
+
+  <!-- 14 -->
+  <section id="tokens">
+    <h2><span class="num">14</span>Token 计数</h2>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><button data-tab="curl">cURL</button><span class="lang">countTokens</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code>r = client.models.count_tokens(
+    model=<span class="t-str">"gemini-3.5-flash"</span>,
+    contents=<span class="t-fn">open</span>(<span class="t-str">"doc.md"</span>).read(),
+)
+<span class="t-fn">print</span>(r.total_tokens)</code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code>curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:countTokens"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> -H <span class="t-str">'Content-Type: application/json'</span> -X POST -d <span class="t-str">'{
+    "contents": [ { "parts": [ { "text": "这段有多少 token？" } ] } ]
+  }'</span>
+<span class="t-com"># 返回 { "totalTokens": N }</span></code></pre></div>
+      </div>
+    </div>
+    <p><code>countTokens</code> 只计输入；实际计费（含思考）看响应的 <code>usageMetadata</code>。</p>
+  </section>
+
+  <!-- 15 -->
+  <section id="safety">
+    <h2><span class="num">15</span>安全设置</h2>
+    <p><code>safetySettings</code> 是数组，每项 <code>{category, threshold}</code>。</p>
+    <table>
+      <tr><th>category（HarmCategory）</th><th>threshold（HarmBlockThreshold）</th></tr>
+      <tr><td><code>HARM_CATEGORY_HARASSMENT</code><br><code>HARM_CATEGORY_HATE_SPEECH</code><br><code>HARM_CATEGORY_SEXUALLY_EXPLICIT</code><br><code>HARM_CATEGORY_DANGEROUS_CONTENT</code><br>（还有 <code>HARM_CATEGORY_CIVIC_INTEGRITY</code>）</td><td><code>BLOCK_LOW_AND_ABOVE</code><br><code>BLOCK_MEDIUM_AND_ABOVE</code><br><code>BLOCK_ONLY_HIGH</code><br><code>BLOCK_NONE</code><br><code>OFF</code></td></tr>
+    </table>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="curl" class="active">cURL</button><span class="lang">safetySettings</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="curl"><pre><code><span class="t-str">"safetySettings"</span>: [
+  { <span class="t-str">"category"</span>: <span class="t-str">"HARM_CATEGORY_HARASSMENT"</span>,        <span class="t-str">"threshold"</span>: <span class="t-str">"BLOCK_ONLY_HIGH"</span> },
+  { <span class="t-str">"category"</span>: <span class="t-str">"HARM_CATEGORY_DANGEROUS_CONTENT"</span>, <span class="t-str">"threshold"</span>: <span class="t-str">"BLOCK_NONE"</span> }
+]</code></pre></div>
+      </div>
+    </div>
+    <p>Gemini 2.5 与 3 系列对这些可配置类别<strong>默认阈值为 Off</strong>（默认不主动拦截，但仍有不可关闭的核心过滤，如 <code>RECITATION</code>/<code>PROHIBITED_CONTENT</code>）。⚠️ 有反馈 <code>BLOCK_NONE</code> 在某些模型上不完全生效。</p>
+  </section>
+
+  <!-- 16 -->
+  <section id="errors">
+    <h2><span class="num">16</span>错误处理与限流</h2>
+    <p>Gemini 走 Google API 的标准错误模型：HTTP 状态码 + <code>error.status</code>（如 <code>INVALID_ARGUMENT</code>）+ <code>error.message</code>。</p>
+    <table>
+      <tr><th>HTTP</th><th>status</th><th>常见原因</th><th>可重试</th></tr>
+      <tr><td>400</td><td><code>INVALID_ARGUMENT</code> / <code>FAILED_PRECONDITION</code></td><td>请求体/参数非法；或免费层未启用计费</td><td>否</td></tr>
+      <tr><td>403</td><td><code>PERMISSION_DENIED</code></td><td>API key 无效/无权限</td><td>否</td></tr>
+      <tr><td>404</td><td><code>NOT_FOUND</code></td><td>model id 拼错 / 资源不存在</td><td>否</td></tr>
+      <tr><td>429</td><td><code>RESOURCE_EXHAUSTED</code></td><td>超出 RPM/TPM/RPD 配额</td><td><strong>是</strong>（退避重试）</td></tr>
+      <tr><td>500</td><td><code>INTERNAL</code></td><td>服务端错误</td><td><strong>是</strong></td></tr>
+      <tr><td>503</td><td><code>UNAVAILABLE</code></td><td>服务暂时过载</td><td><strong>是</strong></td></tr>
+      <tr><td>504</td><td><code>DEADLINE_EXCEEDED</code></td><td>处理超时（输入过大等）</td><td>是（缩小输入）</td></tr>
+    </table>
+    <p>限流三个维度（<strong>每项目、每模型</strong>，撞任一即 429）：<strong>RPM</strong>（每分钟请求）/ <strong>TPM</strong>（每分钟 token）/ <strong>RPD</strong>（每天请求）。配额按付费层级递增：<strong>Free</strong>（最低，部分地区不可用）→ <strong>Tier 1</strong>（启用计费即刻生效）→ <strong>Tier 2</strong>（约累计消费 $250 且首次付款满 30 天 ⚠️）→ <strong>Tier 3</strong>（更高门槛，常见 $1,000+ ⚠️）。</p>
+    <div class="callout note"><p>分类：<strong>不可重试 = 400/403/404</strong>；<strong>可重试 = 429/500/503/504</strong>。429 用<strong>带 jitter 的指数退避</strong>。⚠️ 各模型精确 RPM/TPM/RPD 与 Tier 2/3 门槛经常变动、且存在文档外的后端限流（有人在文档配额内仍遇 429），具体以官方 <a href="https://ai.google.dev/gemini-api/docs/rate-limits">Rate limits 页</a> + 控制台为准，错误语义见 <a href="https://ai.google.dev/gemini-api/docs/troubleshooting">Troubleshooting</a>。</p></div>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（退避重试）</button><span class="lang">retry</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">import</span> time, random
+<span class="t-kw">from</span> google.genai <span class="t-kw">import</span> errors
+
+<span class="t-kw">def</span> <span class="t-fn">call_with_retry</span>(fn, max_retries=<span class="t-num">5</span>):
+    <span class="t-kw">for</span> i <span class="t-kw">in</span> <span class="t-fn">range</span>(max_retries):
+        <span class="t-kw">try</span>:
+            <span class="t-kw">return</span> fn()
+        <span class="t-kw">except</span> errors.APIError <span class="t-kw">as</span> e:
+            <span class="t-kw">if</span> e.code <span class="t-kw">in</span> (<span class="t-num">429</span>, <span class="t-num">500</span>, <span class="t-num">503</span>) <span class="t-kw">and</span> i &lt; max_retries - <span class="t-num">1</span>:
+                time.sleep(<span class="t-fn">min</span>(<span class="t-num">2</span> ** i + random.random(), <span class="t-num">60</span>))
+                <span class="t-kw">continue</span>
+            <span class="t-kw">raise</span></code></pre></div>
+      </div>
+    </div>
+    <div class="callout warn"><p>⚠️ SDK 异常类名（<code>google.genai.errors.APIError</code> / <code>ClientError</code> / <code>ServerError</code>）与 <code>.code</code> 字段以官方 SDK 为准；上例为通用形态。</p></div>
+  </section>
+
+  <!-- 17 -->
+  <section id="appendix">
+    <h2><span class="num">17</span>附录 / 速查</h2>
+
+    <h3>17.1 端点速查</h3>
+    <table>
+      <tr><th>操作</th><th>路径（前缀 <code>https://generativelanguage.googleapis.com</code>）</th></tr>
+      <tr><td>生成</td><td><code>POST /v1beta/models/{model}:generateContent</code></td></tr>
+      <tr><td>流式</td><td><code>POST /v1beta/models/{model}:streamGenerateContent?alt=sse</code></td></tr>
+      <tr><td>计数</td><td><code>POST /v1beta/models/{model}:countTokens</code></td></tr>
+      <tr><td>列模型</td><td><code>GET /v1beta/models</code></td></tr>
+      <tr><td>缓存</td><td><code>POST /v1beta/cachedContents</code></td></tr>
+      <tr><td>文件</td><td><code>POST /v1beta/files</code></td></tr>
+      <tr><td>认证头</td><td><code>x-goog-api-key: $GEMINI_API_KEY</code></td></tr>
+    </table>
+
+    <h3>17.2 关键 generationConfig 速记</h3>
+    <table>
+      <tr><th>字段</th><th>要点</th></tr>
+      <tr><td><code>maxOutputTokens</code></td><td>输出上限；不设用模型默认</td></tr>
+      <tr><td><code>candidateCount</code></td><td>1–8，默认 1</td></tr>
+      <tr><td><code>stopSequences</code></td><td>最多 5 个</td></tr>
+      <tr><td><code>thinkingConfig.thinkingBudget</code></td><td>2.5：0=关 / -1=动态 / 各档范围</td></tr>
+      <tr><td><code>thinkingConfig.thinkingLevel</code></td><td>3.x：MINIMAL/LOW/MEDIUM/HIGH</td></tr>
+      <tr><td><code>responseMimeType</code> + <code>responseSchema</code></td><td>结构化 JSON；二者配套</td></tr>
+    </table>
+
+    <h3>17.3 finishReason / 错误码速记</h3>
+    <p>finishReason：<code>STOP</code> · <code>MAX_TOKENS</code> · <code>SAFETY</code> · <code>RECITATION</code> · <code>OTHER</code>。<br>
+    HTTP：400 INVALID_ARGUMENT · 403 PERMISSION_DENIED · 404 NOT_FOUND · 429 RESOURCE_EXHAUSTED（退避重试）· 500/503 服务端（重试）。</p>
+
+    <h3>17.4 与 Claude / OpenAI 的对照</h3>
+    <table>
+      <tr><th>概念</th><th>Gemini</th></tr>
+      <tr><td>认证头</td><td><code>x-goog-api-key</code></td></tr>
+      <tr><td>助手角色</td><td><code>model</code>（非 assistant）</td></tr>
+      <tr><td>系统提示</td><td>顶层 <code>systemInstruction</code></td></tr>
+      <tr><td>工具结果角色</td><td><code>tool</code> / <code>functionResponse</code> part</td></tr>
+      <tr><td>结构化输出</td><td><code>responseMimeType</code> + <code>responseSchema</code></td></tr>
+      <tr><td>推理控制</td><td><code>thinkingBudget</code>（2.5）/ <code>thinkingLevel</code>（3.x）</td></tr>
+    </table>
+
+    <hr>
+    <p style="color:var(--muted);font-size:14px"><strong>核对日期 2026-06-30。</strong>字段名/schema/枚举来自 v1beta discovery 文档与官方 SDK 源码（可靠）；定价、各档数字、限流配额、Files/Caching 细节因官方页被代理封锁而<strong>未逐字核对</strong>（已用 ⚠️ 标注），请以 <code>ai.google.dev</code> 官方文档与控制台为准，或用 <code>GET /v1beta/models</code> 运行时查询。图像生成见 <a href="gemini-image-api-guide.html">姊妹篇</a>。</p>
+  </section>
+</main>
+</div>
+<script>
+(function(){
+  document.querySelectorAll('[data-cw]').forEach(function(cw){
+    var btns=cw.querySelectorAll('.tabbar button[data-tab]'), panes=cw.querySelectorAll('.pane');
+    btns.forEach(function(btn){btn.addEventListener('click',function(){
+      var t=btn.getAttribute('data-tab');
+      btns.forEach(function(b){b.classList.toggle('active',b===btn);});
+      panes.forEach(function(p){p.classList.toggle('active',p.getAttribute('data-pane')===t);});
+    });});
+  });
+  document.querySelectorAll('.copybtn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var pane=btn.parentElement.querySelector('.pane.active')||btn.parentElement.querySelector('.pane');
+      navigator.clipboard.writeText(pane?pane.innerText:'').then(function(){
+        var o=btn.textContent;btn.textContent='已复制 ✓';setTimeout(function(){btn.textContent=o;},1400);
+      }).catch(function(){btn.textContent='复制失败';});
+    });
+  });
+  var links=Array.prototype.slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  function onScroll(){var pos=window.scrollY+120,idx=0;
+    for(var i=0;i<secs.length;i++){if(secs[i]&&secs[i].offsetTop<=pos)idx=i;}
+    links.forEach(function(a,i){a.classList.toggle('active',i===idx);});}
+  window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+  var toggle=document.getElementById('menuToggle'),toc=document.getElementById('toc');
+  if(toggle){toggle.addEventListener('click',function(){toc.classList.toggle('open');});
+    toc.addEventListener('click',function(e){if(e.target.tagName==='A')toc.classList.remove('open');});}
+})();
+</script>
+</body>
+</html>
