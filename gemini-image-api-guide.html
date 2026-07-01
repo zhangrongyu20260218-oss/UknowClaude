@@ -98,13 +98,14 @@
   <a href="#nano-price">4 · 计价、分辨率、水印</a>
   <a href="#imagen">5 · Imagen（已弃用，迁移参考）</a>
   <a href="#choose">6 · 选型：原生 vs Imagen</a>
-  <a href="#understand">7 · 图像理解 ≠ 图像生成</a>
-  <a href="#appendix">8 · 附录 / 速查 / 待核对</a>
+  <a href="#omni">7 · Gemini Omni（任意输入→视频）★新</a>
+  <a href="#understand">8 · 图像理解 ≠ 图像生成</a>
+  <a href="#appendix">9 · 附录 / 速查 / 待核对</a>
   <a class="xref" href="gemini-text-api-guide.html">→ 文本生成单独成篇（generateContent 全特性）</a>
 </nav>
 <main>
   <h1>Google Gemini 图像生成 API 完整讲解</h1>
-  <p class="subtitle">Gemini 原生图像生成（Nano Banana）与 Imagen 两条路线。以官方 <code>google-genai</code> Python SDK 为主线，cURL/REST 对照。</p>
+  <p class="subtitle">Gemini 媒体生成：原生图像（Nano Banana）、Imagen，以及新的 <strong>Gemini Omni</strong>（任意输入→视频）。以官方 <code>google-genai</code> SDK 为主线，cURL/REST 对照。</p>
 
   <div class="callout warn">
     <p><strong>时效与来源说明（务必先读）。</strong>本文核对日期 <strong>2026-06-30</strong>。事实来自 <code>ai.google.dev</code> 官方页的搜索摘要、官方 <code>googleapis/python-genai</code> SDK 与 cookbook。编写时本环境出口代理<strong>封锁了对 <code>ai.google.dev</code> 的直接抓取</strong>，故凡涉及<strong>模型 ID 的 <code>-preview</code> 后缀、定价/token 折算、分辨率档位、字段默认值</strong>等易变项，均以 ⚠️ 标注，请以官方文档与控制台为准。</p>
@@ -120,6 +121,7 @@
       <tr><th>路线</th><th>是什么</th><th>状态</th><th>本文</th></tr>
       <tr><td><strong>Gemini 原生（Nano Banana）</strong></td><td>多模态模型，<code>generateContent</code> 直接返回图片，支持图文混排、编辑、对话修图</td><td>✅ 官方主推、活跃</td><td>第 2–4 节</td></tr>
       <tr><td>Imagen <span class="pill dep">已弃用</span></td><td>专用文生图，<code>:predict</code> / <code>generate_images</code></td><td>⚠️ 2026-08-17 关停</td><td>第 5 节（仅迁移参考）</td></tr>
+      <tr><td><strong>Gemini Omni</strong> <span class="pill beta">preview · 新</span></td><td>任意输入（文/图/音/视频）→ <strong>视频</strong>输出（含同步音频），走 Interactions API</td><td>2026 I/O 发布，逐步开放</td><td>第 7 节</td></tr>
     </table>
 
     <div class="callout tip">
@@ -331,8 +333,76 @@ jq -r <span class="t-str">'.predictions[0].bytesBase64Encoded'</span> imagen_res
   </section>
 
   <!-- 7 -->
+  <section id="omni">
+    <h2><span class="num">7</span>Gemini Omni（任意输入 → 视频）<span class="pill beta">preview · 新</span></h2>
+
+    <div class="callout pitfall"><p><strong>本节可信度低于其余章节，请特别谨慎。</strong>Gemini Omni 属新发布/preview，走的是<strong>新的 Interactions API</strong>（与本文其余部分的经典 <code>generateContent</code> 是不同端点），<strong>不在 v1beta discovery doc 中</strong>，因此本节<strong>无法像其他章节那样用官方机器可读文档逐字核对</strong>——字段名/参数来自官方博客与第三方教程的搜索摘要（<code>ai.google.dev</code> 官方页在本环境被代理封锁）。落地前请以官方 <a href="https://ai.google.dev/gemini-api/docs/omni">Omni 文档</a> 与 <a href="https://ai.google.dev/gemini-api/docs/models/gemini-omni-flash">模型页</a> 为准。</p></div>
+
+    <h3>7.1 它是什么</h3>
+    <p><strong>Gemini Omni Flash</strong> 是"任意输入 → 视频"的多模态生成模型：把<strong>文本 / 图像 / 音频 / 视频</strong>任意组合作为输入，产出<strong>带同步音频的视频</strong>，且视频内容锚定 Gemini 对真实世界的知识（物理、地理、文化、语言）。发布时约 <strong>10 秒短片</strong>；官方称未来会扩展到图像、音频等输出模态。</p>
+    <table>
+      <tr><th>项</th><th>值 ⚠️（未经 discovery doc 核对）</th></tr>
+      <tr><td>模型 ID</td><td><code>gemini-omni-flash-preview</code></td></tr>
+      <tr><td>API 表面</td><td><strong>Interactions API</strong>：<code>client.interactions.create(...)</code>（非经典 <code>generateContent</code>）</td></tr>
+      <tr><td>输入</td><td>文本 + 图像 + 音频 + 视频（任意组合）</td></tr>
+      <tr><td>输出</td><td>视频（含同步音频）；base64 → <code>output_video.data</code> / 原始 <code>videoBytes</code></td></tr>
+      <tr><td>时长 / 分辨率 / 画幅</td><td>约 4–10s；720p–4K；<code>16:9</code> / <code>9:16</code></td></tr>
+      <tr><td>水印</td><td>SynthID</td></tr>
+      <tr><td>可用性</td><td>2026 I/O（5/19）发布，经 Gemini API + Agent Platform / Vertex 逐步向开发者/企业开放</td></tr>
+    </table>
+
+    <h3>7.2 生成一段视频</h3>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><button data-tab="js">Node.js</button><span class="lang">Interactions API</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">import</span> base64
+<span class="t-kw">from</span> google <span class="t-kw">import</span> genai
+
+client = genai.Client()
+
+interaction = client.interactions.create(
+    model=<span class="t-str">"gemini-omni-flash-preview"</span>,
+    <span class="t-str">input</span>=<span class="t-str">"霓虹灯下、飞行汽车穿梭的赛博朋克未来城市，连续平滑运镜"</span>,
+    response_format={
+        <span class="t-str">"type"</span>: <span class="t-str">"video"</span>,
+        <span class="t-str">"aspect_ratio"</span>: <span class="t-str">"16:9"</span>,     <span class="t-com"># "16:9" 或 "9:16"</span>
+    },
+)
+
+<span class="t-com"># output_video 是 SDK 便捷字段；底层为 base64 的 videoBytes</span>
+<span class="t-kw">with</span> <span class="t-fn">open</span>(<span class="t-str">"out.mp4"</span>, <span class="t-str">"wb"</span>) <span class="t-kw">as</span> f:
+    f.write(base64.b64decode(interaction.output_video.data))</code></pre></div>
+        <div class="pane" data-pane="js"><pre><code><span class="t-kw">import</span> { GoogleGenAI } <span class="t-kw">from</span> <span class="t-str">'@google/genai'</span>;
+<span class="t-kw">import</span> * <span class="t-kw">as</span> fs <span class="t-kw">from</span> <span class="t-str">'fs'</span>;
+
+<span class="t-kw">const</span> ai = <span class="t-kw">new</span> GoogleGenAI({});
+<span class="t-kw">const</span> interaction = <span class="t-kw">await</span> ai.interactions.create({
+  model: <span class="t-str">'gemini-omni-flash-preview'</span>,
+  input: <span class="t-str">'一颗弹珠在连锁反应轨道上快速滚动，连续平滑长镜头。'</span>,
+});
+
+<span class="t-kw">if</span> (interaction.output_video?.data) {
+  fs.writeFileSync(<span class="t-str">'marble.mp4'</span>, Buffer.from(interaction.output_video.data, <span class="t-str">'base64'</span>));
+}</code></pre></div>
+      </div>
+    </div>
+    <div class="callout warn"><p>⚠️ <code>response_format</code> 里除 <code>type</code>/<code>aspect_ratio</code> 外，<strong>时长 / 分辨率 / FPS 是否可在调用层配置尚不明确</strong>（preview 期可能只有默认值或需在提示词里描述）。REST 端点为 Interactions API 路径（非 <code>:generateContent</code>），本环境未能核对其精确 body/路径——以官方 Omni 页为准。</p></div>
+
+    <h3>7.3 对话式多轮编辑（Omni 的招牌能力）</h3>
+    <p>Omni 的核心卖点是通过 Interactions API 做<strong>对话式迭代编辑</strong>：用自然语言描述"改什么、保留什么"，每次编辑<strong>建立在上一次之上</strong>，跨镜头保持<strong>角色一致、场景/地点延续</strong>，无需从头重生成。因为 Interactions API 在<strong>服务端维护状态</strong>，续编辑通常靠回传前一次交互的 ID（如 <code>previous_interaction_id</code> ⚠️ 字段名以官方为准）来承接上下文。</p>
+    <div class="callout note"><p>与 Nano Banana 的"对话式修图"（图像）是同一思路的视频版：都靠会话状态保留视觉上下文，逐步迭代而非每次从零生成。</p></div>
+
+    <h3>7.4 选型定位</h3>
+    <ul>
+      <li>要<strong>视频</strong>（尤其任意模态输入、带同步音频、可对话式剪辑）→ <strong>Gemini Omni</strong>。</li>
+      <li>要<strong>静态图</strong>（生成/编辑/合成）→ Nano Banana（第 2–4 节）。</li>
+      <li>Omni 仍在 preview 且逐步开放；生产前确认你的项目已获访问权限与配额。</li>
+    </ul>
+  </section>
+
+  <!-- 8 -->
   <section id="understand">
-    <h2><span class="num">7</span>图像理解 ≠ 图像生成</h2>
+    <h2><span class="num">8</span>图像理解 ≠ 图像生成</h2>
     <p>很多人把"给模型一张图让它分析/描述/OCR"误当成图像生成，二者完全不同：</p>
     <ul>
       <li><strong>图像理解</strong>＝多模态文本理解：图片作为<strong>输入</strong>传给 Gemini（<code>inline_data</code> 或 File API），模型<strong>输出文本</strong>（描述、问答、检测、OCR）。消耗输入 token，走文本理解计费，<strong>不产生图片</strong>。</li>
@@ -341,14 +411,15 @@ jq -r <span class="t-str">'.predictions[0].bytesBase64Encoded'</span> imagen_res
     <div class="callout note"><p>两者甚至可在同一次 <code>generateContent</code> 里组合：输入一张图、输出一张改后的图 + 一段说明文本。图像理解的写法见 <a href="gemini-text-api-guide.html#multimodal">文本篇 · 第 12 节 多模态输入</a>。</p></div>
   </section>
 
-  <!-- 8 -->
+  <!-- 9 -->
   <section id="appendix">
-    <h2><span class="num">8</span>附录 / 速查 / 待核对</h2>
+    <h2><span class="num">9</span>附录 / 速查 / 待核对</h2>
 
-    <h3>8.1 速查</h3>
+    <h3>9.1 速查</h3>
     <table>
       <tr><th>需求</th><th>用</th></tr>
       <tr><td>文生图（新项目）</td><td><code>gemini-3.1-flash-image</code>（性价比）/ <code>gemini-3-pro-image-preview</code>（画质）</td></tr>
+      <tr><td>生成/编辑视频（任意输入）</td><td><strong>Gemini Omni</strong>：<code>gemini-omni-flash-preview</code> + <code>client.interactions.create</code>（preview）</td></tr>
       <tr><td>编辑/合成/对话修图</td><td>Nano Banana + <code>client.chats.create</code> + <code>responseModalities:[TEXT,IMAGE]</code></td></tr>
       <tr><td>取图（SDK）</td><td>遍历 <code>resp.parts</code>，<code>part.inline_data</code> → <code>part.as_image().save(...)</code></td></tr>
       <tr><td>取图（REST）</td><td><code>candidates[0].content.parts[].inlineData.data</code>（base64）</td></tr>
@@ -356,8 +427,9 @@ jq -r <span class="t-str">'.predictions[0].bytesBase64Encoded'</span> imagen_res
       <tr><td>存量 Imagen</td><td><code>imagen-4.0-generate-001</code> + <code>:predict</code>（尽快迁移）</td></tr>
     </table>
 
-    <h3>8.2 待人工核对清单（因代理封锁未能逐字抓取官方页）</h3>
+    <h3>9.2 待人工核对清单（因代理封锁未能逐字抓取官方页）</h3>
     <ol>
+      <li><strong>Gemini Omni（第 7 节）整节</strong>：模型 ID <code>gemini-omni-flash-preview</code>、Interactions API 的精确请求/响应字段（<code>response_format</code> 可配项、<code>output_video</code>/<code>videoBytes</code>、续编辑的 <code>previous_interaction_id</code>）、时长/分辨率/FPS 是否可配、REST 端点路径、定价与配额——均来自搜索摘要，未经 discovery doc 核对，务必以官方 Omni 页复核。</li>
       <li>各模型 ID 的 <code>-preview</code> 后缀现状（是否已转正）。</li>
       <li>Nano Banana 的 token→美元换算与 1K 图实际 token 数（有开发者反馈与文档不符）。</li>
       <li>Imagen <code>outputMimeType</code> 默认值、<code>:predict</code> 响应取图字段名（<code>bytesBase64Encoded</code> vs 其它）。</li>
