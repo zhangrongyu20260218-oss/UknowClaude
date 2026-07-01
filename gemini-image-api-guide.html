@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Gemini 图像生成 API 完整讲解 · Nano Banana / Imagen · 面向高级程序员</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel2:#1b1f2a; --fg:#e6e9ef; --muted:#9aa3b2;
+    --accent:#e8a13b; --accent2:#9b72f2; --line:#272c38; --code-bg:#11141b;
+    --kw:#c678dd; --str:#98c379; --num:#d19a66; --com:#5c6370; --fn:#61afef; --punct:#abb2bf;
+    --ok:#2ea043; --warn:#d29922; --danger:#f85149;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;line-height:1.75}
+  .layout{display:flex;max-width:1500px;margin:0 auto}
+  nav.toc{width:310px;flex:0 0 310px;position:sticky;top:0;align-self:flex-start;height:100vh;
+    overflow-y:auto;border-right:1px solid var(--line);padding:24px 18px;background:var(--panel)}
+  nav.toc h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:6px;font-size:14px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--fg);background:var(--panel2)}
+  nav.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--panel2)}
+  nav.toc .brand{font-weight:700;font-size:18px;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+  nav.toc .brand small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:4px;-webkit-text-fill-color:var(--muted)}
+  nav.toc .xref{display:block;margin-top:18px;font-size:13px;color:var(--accent2);text-decoration:none;padding:8px 10px;border:1px dashed var(--line);border-radius:8px}
+  main{flex:1 1 auto;min-width:0;padding:40px 56px 120px;max-width:1000px}
+  h1{font-size:32px;line-height:1.25;margin:0 0 8px}
+  .subtitle{color:var(--muted);font-size:16px;margin:0 0 24px}
+  section{padding-top:48px;margin-top:-24px}
+  section>h2{font-size:25px;border-bottom:1px solid var(--line);padding-bottom:10px;margin:8px 0 18px}
+  section>h2 .num{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:10px}
+  h3{font-size:19px;margin:28px 0 10px;color:#f0f2f6}
+  h4{font-size:16px;margin:20px 0 8px;color:var(--accent2)}
+  p{margin:12px 0}
+  a{color:var(--accent2)}
+  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:.88em;background:var(--panel2);padding:2px 6px;border-radius:5px;color:#f0c486}
+  ul,ol{padding-left:24px}
+  li{margin:6px 0}
+  strong{color:#fff}
+  hr{border:none;border-top:1px solid var(--line);margin:32px 0}
+  .lead{font-size:17px;color:#cfd6e1;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px;background:var(--panel)}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600}
+  td code{background:var(--code-bg)}
+  tr:hover td{background:var(--panel2)}
+  .callout{border-radius:10px;padding:14px 16px 14px 46px;margin:18px 0;position:relative;border:1px solid var(--line);font-size:15px}
+  .callout::before{position:absolute;left:14px;top:13px;font-size:18px;font-weight:700}
+  .callout.note{background:rgba(155,114,242,.08);border-color:rgba(155,114,242,.35)}
+  .callout.note::before{content:"ℹ";color:var(--accent2)}
+  .callout.tip{background:rgba(46,160,67,.08);border-color:rgba(46,160,67,.35)}
+  .callout.tip::before{content:"✓";color:var(--ok)}
+  .callout.warn{background:rgba(210,153,34,.08);border-color:rgba(210,153,34,.4)}
+  .callout.warn::before{content:"⚠";color:var(--warn)}
+  .callout.pitfall{background:rgba(248,81,73,.08);border-color:rgba(248,81,73,.4)}
+  .callout.pitfall::before{content:"✕";color:var(--danger)}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .codewrap{margin:16px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--code-bg)}
+  .tabbar{display:flex;background:var(--panel2);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .tabbar button{background:none;border:none;color:var(--muted);padding:9px 16px;cursor:pointer;font-size:13px;font-family:inherit;border-bottom:2px solid transparent}
+  .tabbar button.active{color:var(--fg);border-bottom-color:var(--accent)}
+  .tabbar .lang{margin-left:auto;color:var(--com);font-size:12px;padding:9px 14px;align-self:center}
+  .panes{position:relative}
+  pre{margin:0;padding:16px 18px;overflow-x:auto;font-size:13.5px;line-height:1.6;font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre code{background:none;padding:0;color:var(--punct);font-size:inherit}
+  .pane{display:none}.pane.active{display:block}
+  .copybtn{position:absolute;top:8px;right:8px;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;z-index:2}
+  .copybtn:hover{color:var(--fg);border-color:var(--accent)}
+  .t-kw{color:var(--kw)} .t-str{color:var(--str)} .t-num{color:var(--num)} .t-com{color:var(--com);font-style:italic}
+  .t-fn{color:var(--fn)} .t-pun{color:var(--punct)} .t-bi{color:var(--accent)}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--muted);background:var(--panel2);margin-left:8px;vertical-align:middle}
+  .pill.beta{color:var(--warn);border-color:rgba(210,153,34,.4)}
+  .pill.dep{color:var(--danger);border-color:rgba(248,81,73,.4)}
+  .menu-toggle{display:none}
+  @media(max-width:980px){
+    nav.toc{position:fixed;left:0;top:0;z-index:50;transform:translateX(-100%);transition:transform .2s;width:285px;flex-basis:285px}
+    nav.toc.open{transform:translateX(0)}
+    main{padding:64px 20px 100px}
+    .menu-toggle{display:block;position:fixed;top:12px;left:12px;z-index:60;background:var(--accent);color:#111;border:none;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer;font-weight:600}
+  }
+</style>
+</head>
+<body>
+<button class="menu-toggle" id="menuToggle">☰ 目录</button>
+<div class="layout">
+<nav class="toc" id="toc">
+  <div class="brand">Gemini API · 图像生成
+    <small>Nano Banana（原生）/ Imagen · google-genai SDK + REST</small>
+  </div>
+  <h2>正文</h2>
+  <a href="#overview">1 · 概览与 2026 格局</a>
+  <a href="#nano">2 · Gemini 原生图像（Nano Banana）</a>
+  <a href="#edit">3 · 图像编辑 / 多图 / 对话修图</a>
+  <a href="#nano-price">4 · 计价、分辨率、水印</a>
+  <a href="#imagen">5 · Imagen（已弃用，迁移参考）</a>
+  <a href="#choose">6 · 选型：原生 vs Imagen</a>
+  <a href="#omni">7 · Gemini Omni（任意输入→视频）★新</a>
+  <a href="#understand">8 · 图像理解 ≠ 图像生成</a>
+  <a href="#appendix">9 · 附录 / 速查 / 待核对</a>
+  <a class="xref" href="gemini-text-api-guide.html">→ 文本生成单独成篇（generateContent 全特性）</a>
+</nav>
+<main>
+  <h1>Google Gemini 图像生成 API 完整讲解</h1>
+  <p class="subtitle">Gemini 媒体生成：原生图像（Nano Banana）、Imagen，以及新的 <strong>Gemini Omni</strong>（任意输入→视频）。以官方 <code>google-genai</code> SDK 为主线，cURL/REST 对照。</p>
+
+  <div class="callout warn">
+    <p><strong>时效与来源说明（务必先读）。</strong>本文核对日期 <strong>2026-06-30</strong>。事实来自 <code>ai.google.dev</code> 官方页的搜索摘要、官方 <code>googleapis/python-genai</code> SDK 与 cookbook。编写时本环境出口代理<strong>封锁了对 <code>ai.google.dev</code> 的直接抓取</strong>，故凡涉及<strong>模型 ID 的 <code>-preview</code> 后缀、定价/token 折算、分辨率档位、字段默认值</strong>等易变项，均以 ⚠️ 标注，请以官方文档与控制台为准。</p>
+  </div>
+
+  <!-- 1 -->
+  <section id="overview">
+    <h2><span class="num">1</span>概览与 2026 格局</h2>
+
+    <div class="lead"><p style="margin:0">截至 2026 年中，Google 图像生成格局发生了重大变化：<strong>Gemini 原生图像生成（"Nano Banana" 系列）已成为官方主推</strong>，通过 <code>generateContent</code> 返回图片；而<strong>专用文生图模型 Imagen 4 全系列已弃用，计划 2026-08-17 关停</strong>，官方建议迁移到 Nano Banana。</p></div>
+
+    <table>
+      <tr><th>路线</th><th>是什么</th><th>状态</th><th>本文</th></tr>
+      <tr><td><strong>Gemini 原生（Nano Banana）</strong></td><td>多模态模型，<code>generateContent</code> 直接返回图片，支持图文混排、编辑、对话修图</td><td>✅ 官方主推、活跃</td><td>第 2–4 节</td></tr>
+      <tr><td>Imagen <span class="pill dep">已弃用</span></td><td>专用文生图，<code>:predict</code> / <code>generate_images</code></td><td>⚠️ 2026-08-17 关停</td><td>第 5 节（仅迁移参考）</td></tr>
+      <tr><td><strong>Gemini Omni</strong> <span class="pill beta">preview · 新</span></td><td>任意输入（文/图/音/视频）→ <strong>视频</strong>输出（含同步音频），走 Interactions API</td><td>2026 I/O 发布，逐步开放</td><td>第 7 节</td></tr>
+    </table>
+
+    <div class="callout tip">
+      <p><strong>判别口诀：图片在请求里（输入）= 图像理解；图片在响应里（输出）= 图像生成。</strong>本文只讲"生成"。把图片喂给模型做分析/OCR/问答属于"理解"，走文本理解计费——见 <a href="#understand">第 7 节</a> 与 <a href="gemini-text-api-guide.html#multimodal">文本篇·多模态输入</a>。</p>
+    </div>
+    <div class="callout note"><p>新文档里图像生成页有时归在较新的 <strong>"Interactions API"</strong> 标题下（取图字段为 <code>interaction.output_image.data</code>）。本文以更通用、SDK 稳定的 <code>generate_content</code> + <code>inline_data</code> 写法为主；若你用 Interactions API，取图字段以该页为准。</p></div>
+  </section>
+
+  <!-- 2 -->
+  <section id="nano">
+    <h2><span class="num">2</span>Gemini 原生图像（Nano Banana）</h2>
+
+    <h3>2.1 模型 ID</h3>
+    <table>
+      <tr><th>别名</th><th>精确模型 ID ⚠️</th><th>定位</th></tr>
+      <tr><td>Nano Banana Pro</td><td><code>gemini-3-pro-image-preview</code></td><td>最高质量、推理驱动、专业级生成/编辑</td></tr>
+      <tr><td>Nano Banana 2</td><td><code>gemini-3.1-flash-image</code></td><td>高吞吐、高效率、低价位</td></tr>
+      <tr><td>Nano Banana（初代）</td><td><code>gemini-2.5-flash-image</code></td><td>速度/效率优先（较早一代）</td></tr>
+    </table>
+    <div class="callout warn"><p>⚠️ Gemini 3 系列图像模型多标为 <strong>preview</strong>；<code>-preview</code> 后缀会随转正而变。调用前以官方 <a href="https://ai.google.dev/gemini-api/docs/models">Models 页</a> 为准，或 <code>GET /v1beta/models</code> 查询。</p></div>
+
+    <h3>2.2 调用方式：generateContent + responseModalities</h3>
+    <p>核心思路：调用普通的 <code>generateContent</code>，把图像模型放进去；可选用 <code>responseModalities</code>（SDK：<code>response_modalities</code>）声明要 <code>TEXT</code>、<code>IMAGE</code> 或两者。返回的 <code>parts</code> 里凡 <code>inlineData</code>（SDK：<code>inline_data</code>）即图片，含 <code>mimeType</code> 与 base64 <code>data</code>。</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（生成并存盘）</button><button data-tab="ar">Python（控制宽高比）</button><span class="lang">generate</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google <span class="t-kw">import</span> genai
+
+client = genai.Client()   <span class="t-com"># 读取 GEMINI_API_KEY</span>
+
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-3.1-flash-image"</span>,        <span class="t-com"># 或 gemini-3-pro-image-preview</span>
+    contents=[<span class="t-str">"画一道以 Gemini 为主题、摆盘精致的香蕉料理"</span>],
+)
+
+<span class="t-kw">for</span> part <span class="t-kw">in</span> resp.parts:
+    <span class="t-kw">if</span> part.text <span class="t-kw">is</span> <span class="t-kw">not</span> <span class="t-kw">None</span>:
+        <span class="t-fn">print</span>(part.text)
+    <span class="t-kw">elif</span> part.inline_data <span class="t-kw">is</span> <span class="t-kw">not</span> <span class="t-kw">None</span>:
+        part.as_image().save(<span class="t-str">"generated_image.png"</span>)   <span class="t-com"># SDK 便捷方法转 PIL.Image</span></code></pre></div>
+        <div class="pane" data-pane="ar"><pre><code><span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+
+resp = client.models.generate_content(
+    model=<span class="t-str">"gemini-3.1-flash-image"</span>,
+    contents=<span class="t-str">"一张关于会飞的运动鞋的卡通信息图"</span>,
+    config=types.GenerateContentConfig(
+        response_modalities=[<span class="t-str">"IMAGE"</span>],
+        image_config=types.ImageConfig(aspect_ratio=<span class="t-str">"9:16"</span>),
+    ),
+)
+<span class="t-kw">for</span> part <span class="t-kw">in</span> resp.parts:
+    <span class="t-kw">if</span> part.inline_data:
+        part.as_image().save(<span class="t-str">"out.png"</span>)</code></pre></div>
+      </div>
+    </div>
+
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="curl" class="active">cURL（生成 + base64 解码写盘）</button><span class="lang">REST</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="curl"><pre><code>curl -s <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> \
+  -H <span class="t-str">"Content-Type: application/json"</span> \
+  -d <span class="t-str">'{
+    "contents": [{ "parts": [{ "text": "一张关于会飞的运动鞋的卡通信息图" }] }],
+    "generationConfig": { "responseModalities": ["TEXT", "IMAGE"] }
+  }'</span> &gt; resp.json
+
+<span class="t-com"># 取出第一段 inlineData 的 base64 并解码写盘</span>
+jq -r <span class="t-str">'.candidates[0].content.parts[] | select(.inlineData) | .inlineData.data'</span> resp.json \
+  | base64 --decode &gt; generated_image.png</code></pre></div>
+      </div>
+    </div>
+    <div class="callout note"><p>字段路径：<code>candidates[].content.parts[].inlineData.{mimeType,data}</code>，<code>data</code> 为 base64。⚠️ 经典 REST 用 camelCase 的 <code>inlineData</code>；若走 Interactions API 端点，取图字段为 <code>output_image.data</code>，请求/响应结构不同。</p></div>
+  </section>
+
+  <!-- 3 -->
+  <section id="edit">
+    <h2><span class="num">3</span>图像编辑 / 多图输入 / 对话式修图</h2>
+    <p>这是 Nano Banana 相对 Imagen 的<strong>核心优势</strong>：因为它本质是多模态对话模型。</p>
+    <ul>
+      <li><strong>图像编辑 / 多图输入</strong>：把一张或多张图片连同文本一起放进 <code>contents</code>，模型可做编辑、风格迁移、合成。输入图片用 <code>inline_data</code>（base64 + mimeType）或 File API 传入。</li>
+      <li><strong>对话式修图（推荐）</strong>：用 <code>client.chats.create(...)</code> 建多轮会话，逐轮自然语言下指令（"把背景换成日落"）。官方说明多轮会话是迭代图像的推荐方式，并依赖 <strong>Thought Signatures</strong> 在轮次间保留视觉上下文。</li>
+      <li><strong>多图上限</strong>：单次请求最多支持约 <strong>3,600 个图像文件</strong>。⚠️</li>
+    </ul>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（对话式修图）</button><span class="lang">edit / chat</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+<span class="t-kw">from</span> PIL <span class="t-kw">import</span> Image
+
+input_image = Image.open(<span class="t-str">"room.png"</span>)
+
+chat = client.chats.create(
+    model=<span class="t-str">"gemini-3.1-flash-image"</span>,
+    config=types.GenerateContentConfig(response_modalities=[<span class="t-str">"TEXT"</span>, <span class="t-str">"IMAGE"</span>]),
+)
+resp = chat.send_message([<span class="t-str">"把背景换成日落"</span>, input_image])
+<span class="t-kw">for</span> part <span class="t-kw">in</span> resp.parts:
+    <span class="t-kw">if</span> part.inline_data:
+        part.as_image().save(<span class="t-str">"edited.png"</span>)
+<span class="t-com"># 继续 chat.send_message("再把灯打开") 逐步迭代——上下文自动保留</span></code></pre></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="nano-price">
+    <h2><span class="num">4</span>计价、分辨率、水印</h2>
+    <p>Nano Banana 走 <strong>token 计费</strong>（不是按张），图像输出折算成 token。</p>
+    <table>
+      <tr><th>模型</th><th>分辨率</th><th>约合 tokens</th><th>约合每张 ⚠️</th></tr>
+      <tr><td rowspan="4">Gemini 3.1 Flash Image<br>（$60 / 1M tokens 输出）</td><td>0.5K (512px)</td><td>747</td><td>$0.045</td></tr>
+      <tr><td>1K (1024²)</td><td>1120</td><td>$0.067</td></tr>
+      <tr><td>2K (2048²)</td><td>1680</td><td>$0.101</td></tr>
+      <tr><td>4K (4096²)</td><td>2520</td><td>$0.151</td></tr>
+      <tr><td rowspan="2">Gemini 3 Pro Image</td><td>1K–2K</td><td>1120</td><td>$0.134</td></tr>
+      <tr><td>至 4K</td><td>2000</td><td>$0.24</td></tr>
+    </table>
+    <ul>
+      <li><strong>分辨率</strong>：Gemini 3 Pro Image 原生支持 1K / 2K / 4K。</li>
+      <li><strong>宽高比</strong>：支持 16:9 等多种（配 <code>image_config.aspect_ratio</code>）。</li>
+      <li><strong>水印</strong>：所有生成图带 <strong>SynthID</strong> 水印。</li>
+    </ul>
+    <div class="callout warn"><p>⚠️ 上述 token→美元换算为社区/摘要折算值，且有开发者反馈 1K 图实测 token 数与文档标称（1120）有出入。计费请以官方 <a href="https://ai.google.dev/gemini-api/docs/pricing">Pricing 页</a> 与账单为准。</p></div>
+  </section>
+
+  <!-- 5 -->
+  <section id="imagen">
+    <h2><span class="num">5</span>Imagen（已弃用，仅迁移参考）<span class="pill dep">2026-08-17 关停</span></h2>
+    <div class="callout pitfall"><p><strong>头号事实</strong>：Imagen 4 全系列已弃用，计划 <strong>2026-08-17 关停</strong>，<code>generate_images</code> 不再推荐。<strong>新项目请直接用第 2 节的 Nano Banana。</strong>本节供存量项目维护/迁移使用。</p></div>
+
+    <h3>5.1 模型 ID 与档位</h3>
+    <table>
+      <tr><th>档位</th><th>模型 ID</th><th>每张价 ⚠️</th></tr>
+      <tr><td>Imagen 4 Fast</td><td><code>imagen-4.0-fast-generate-001</code></td><td>$0.02</td></tr>
+      <tr><td>Imagen 4 Standard</td><td><code>imagen-4.0-generate-001</code></td><td>$0.04</td></tr>
+      <tr><td>Imagen 4 Ultra</td><td><code>imagen-4.0-ultra-generate-001</code></td><td>$0.06</td></tr>
+    </table>
+    <p>旧的 <code>imagen-3.0-generate-...</code> 属更早一代。</p>
+
+    <h3>5.2 请求参数（REST <code>:predict</code> / SDK <code>generate_images</code>）</h3>
+    <table>
+      <tr><th>参数（REST / SDK）</th><th>取值</th><th>默认</th></tr>
+      <tr><td><code>sampleCount</code> / <code>number_of_images</code></td><td>1–4</td><td>4</td></tr>
+      <tr><td><code>aspectRatio</code> / <code>aspect_ratio</code></td><td><code>1:1</code> <code>3:4</code> <code>4:3</code> <code>9:16</code> <code>16:9</code></td><td>1:1</td></tr>
+      <tr><td><code>personGeneration</code> / <code>person_generation</code></td><td><code>dont_allow</code> / <code>allow_adult</code> / <code>allow_all</code></td><td>allow_adult</td></tr>
+      <tr><td><code>negativePrompt</code> / <code>negative_prompt</code></td><td>字符串</td><td>—</td></tr>
+      <tr><td><code>seed</code></td><td>整数</td><td>—</td></tr>
+      <tr><td><code>outputMimeType</code> / <code>output_mime_type</code></td><td><code>image/png</code> / <code>image/jpeg</code></td><td>⚠️ 需核对</td></tr>
+      <tr><td><code>imageSize</code> / <code>sample_image_size</code></td><td><code>1K</code> / <code>2K</code>（仅 Standard/Ultra）</td><td>1K</td></tr>
+    </table>
+    <p><code>personGeneration="allow_all"</code> 在 EU、UK、CH、MENA 地区不允许。</p>
+
+    <h3>5.3 示例</h3>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python</button><button data-tab="curl">cURL</button><span class="lang">Imagen</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google <span class="t-kw">import</span> genai
+<span class="t-kw">from</span> google.genai <span class="t-kw">import</span> types
+
+client = genai.Client()
+resp = client.models.generate_images(
+    model=<span class="t-str">"imagen-4.0-generate-001"</span>,
+    prompt=<span class="t-str">"前景一把雨伞，背景是雨夜的天空"</span>,
+    config=types.GenerateImagesConfig(
+        number_of_images=<span class="t-num">1</span>,
+        aspect_ratio=<span class="t-str">"3:4"</span>,
+        person_generation=<span class="t-str">"allow_adult"</span>,
+        output_mime_type=<span class="t-str">"image/jpeg"</span>,
+    ),
+)
+resp.generated_images[<span class="t-num">0</span>].image.save(<span class="t-str">"imagen_out.jpg"</span>)</code></pre></div>
+        <div class="pane" data-pane="curl"><pre><code>curl -X POST \
+  <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict"</span> \
+  -H <span class="t-str">"x-goog-api-key: $GEMINI_API_KEY"</span> -H <span class="t-str">"Content-Type: application/json"</span> -d <span class="t-str">'{
+    "instances": [ { "prompt": "拿着红色滑板的机器人" } ],
+    "parameters": { "sampleCount": 4, "aspectRatio": "16:9", "personGeneration": "allow_adult" }
+  }'</span> &gt; imagen_resp.json
+
+<span class="t-com"># 取第一张图的 base64 并存盘（字段名以官方为准，常见为 bytesBase64Encoded）</span>
+jq -r <span class="t-str">'.predictions[0].bytesBase64Encoded'</span> imagen_resp.json | base64 --decode &gt; imagen_out.png</code></pre></div>
+      </div>
+    </div>
+    <div class="callout warn"><p>⚠️ 旧的 <code>import google.generativeai as genai</code> + <code>ImageGenerationModel(...)</code> 属老 SDK，新代码统一用 <code>from google import genai</code>。<code>:predict</code> 响应取图字段名（<code>bytesBase64Encoded</code> vs 其它）、<code>outputMimeType</code> 默认值需以官方页核对。所有 Imagen 生成图同样带 SynthID 水印。</p></div>
+  </section>
+
+  <!-- 6 -->
+  <section id="choose">
+    <h2><span class="num">6</span>选型：原生 vs Imagen</h2>
+    <table>
+      <tr><th>维度</th><th>Gemini 原生（Nano Banana）</th><th>Imagen 4</th></tr>
+      <tr><td>状态</td><td><strong>官方主推、活跃</strong></td><td><strong>弃用，2026-08-17 关停</strong></td></tr>
+      <tr><td>调用方式</td><td><code>generateContent</code>（多模态、对话）</td><td><code>:predict</code> / <code>generate_images</code></td></tr>
+      <tr><td>图像编辑 / 多图</td><td><strong>强项</strong>：编辑、合成、风格迁移</td><td>弱（主要纯文生图）</td></tr>
+      <tr><td>对话式迭代</td><td><strong>支持多轮修图</strong>（Thought Signatures）</td><td>不支持</td></tr>
+      <tr><td>图文混合输出</td><td>支持（<code>responseModalities:[TEXT,IMAGE]</code>）</td><td>仅出图</td></tr>
+      <tr><td>计费</td><td>按 <strong>token</strong>（约 $0.067/张@1K Flash）</td><td>按 <strong>张</strong>（$0.02/$0.04/$0.06）</td></tr>
+      <tr><td>分辨率</td><td>1K/2K/4K（Pro）</td><td>1K/2K（Std/Ultra）</td></tr>
+      <tr><td>水印</td><td>SynthID</td><td>SynthID</td></tr>
+    </table>
+    <div class="callout tip">
+      <p><strong>选型建议：</strong></p>
+      <ul style="margin-bottom:0">
+        <li>几乎所有新项目都应选 <strong>Nano Banana</strong>。要最高画质/专业资产 → <code>gemini-3-pro-image-preview</code>；要高吞吐/低成本 → <code>gemini-3.1-flash-image</code>。</li>
+        <li>需要<strong>编辑现有图、多图合成、对话式逐步修图、图文混排输出</strong> → 只能用 Gemini 原生（Imagen 做不到）。</li>
+        <li>仅在<strong>维护既有 Imagen 代码且尚未迁移</strong>时继续用 Imagen，但务必在 2026-08-17 前迁移。</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section id="omni">
+    <h2><span class="num">7</span>Gemini Omni（任意输入 → 视频）<span class="pill beta">preview · 新</span></h2>
+
+    <div class="callout note"><p><strong>本节字段已用官方 <code>google-genai</code> SDK 源码（v2.10.0，PyPI 直取）逐一核实</strong>——Interactions API 的视频生成能力真实存在。官方 Omni 文档页 <code>ai.google.dev/gemini-api/docs/omni</code> 在本环境被组织出口策略封锁（403）无法直连，因此仍有两类需你复核：</p>
+      <ul style="margin:8px 0 0">
+        <li>✅ <strong>SDK 源码已核实</strong>：<code>client.interactions.create(...)</code> 的参数（<code>input</code>、<code>response_modalities</code>、<code>response_format</code>、<code>response_mime_type</code>、<code>previous_interaction_id</code>、<code>cached_content</code> 等）、视频输出块 <code>VideoContent</code> 的字段、视频任务模式。下文代码即据此写。</li>
+        <li>⚠️ <strong>仍需以官方 Omni 页复核</strong>：确切模型 ID（<code>gemini-omni-flash-preview</code> 来自搜索，非 SDK）、定价、片长/分辨率上限、preview 期是否已开放到你的项目。</li>
+      </ul>
+      <p style="margin:8px 0 0"><em>更正上一版：此前把第三方教程的 <code>response_format={"type":"video",...}</code> 判为"与官方冲突、勿抄"——这是我判断错误。SDK 源码证实 <code>response_format</code> 的 <code>VideoResponseFormat</code> 是真实支持的形态。已在下文改正。</em></p></div>
+
+    <h3>7.1 它是什么</h3>
+    <p><strong>Gemini Omni Flash</strong> 是"任意输入 → 视频"的多模态生成模型：把<strong>文本 / 图像 / 音频 / 视频</strong>任意组合作为输入，产出<strong>带同步音频的视频</strong>，且视频内容锚定 Gemini 对真实世界的知识（物理、地理、文化、语言）。发布时约 <strong>10 秒短片</strong>；官方称未来会扩展到图像、音频等输出模态。</p>
+    <table>
+      <tr><th>项</th><th>值（✅=SDK 源码核实；⚠️=待官方页复核）</th></tr>
+      <tr><td>模型 ID</td><td><code>gemini-omni-flash-preview</code> ⚠️（来自搜索，SDK 里 model 是通用字符串参数）</td></tr>
+      <tr><td>API 表面</td><td>✅ <strong>Interactions API</strong>：<code>client.interactions.create(...)</code>（非 <code>generateContent</code>）</td></tr>
+      <tr><td>输入 <code>input</code></td><td>✅ <code>str</code>，或 Content/Step/Turn 列表（多模态：文本/图像/音频/视频内容块任意组合）</td></tr>
+      <tr><td>请求视频输出</td><td>✅ <code>response_modalities=["video"]</code>（小写），或 <code>response_format={"type":"video", ...}</code>（细控，需配 <code>response_mime_type</code>）</td></tr>
+      <tr><td>视频输出块</td><td>✅ <code>VideoContent</code>：<code>data</code>（base64）/ <code>uri</code> / <code>mime_type</code>（<code>video/mp4</code> 等）/ <code>resolution</code></td></tr>
+      <tr><td>画幅 / 片长</td><td>✅ <code>aspect_ratio</code> ∈ <code>16:9</code>/<code>9:16</code>、<code>duration</code>（字符串）在 <code>response_format</code> 里；具体上限 ⚠️ 以官方为准</td></tr>
+      <tr><td>任务模式</td><td>✅ VideoConfig <code>task</code> ∈ <code>text_to_video</code> / <code>image_to_video</code> / <code>reference_to_video</code> / <code>edit</code></td></tr>
+      <tr><td>水印</td><td>SynthID</td></tr>
+      <tr><td>可用性</td><td>2026 I/O（5/19）发布，经 Gemini API + Agent Platform / Vertex 逐步向开发者/企业开放</td></tr>
+    </table>
+
+    <h3>7.2 生成一段视频</h3>
+    <p>两种请求视频输出的方式（字段均核实自 SDK 源码 <code>CreateModelInteraction</code>）：<strong>简法</strong>用 <code>response_modalities=["video"]</code>；<strong>细控</strong>用 <code>response_format</code>（<code>VideoResponseFormat</code>，可设画幅/时长/投递方式，需同时给 <code>response_mime_type</code>）。视频结果是一个 <code>VideoContent</code> 块，其 <code>data</code> 为 base64。</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（简法 modalities）</button><button data-tab="fmt">Python（细控 response_format）</button><span class="lang">Interactions API</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">import</span> base64
+<span class="t-kw">from</span> google <span class="t-kw">import</span> genai
+
+client = genai.Client()
+
+interaction = client.interactions.create(
+    model=<span class="t-str">"gemini-omni-flash-preview"</span>,       <span class="t-com"># ⚠️ 模型 ID 待官方页复核</span>
+    <span class="t-str">input</span>=<span class="t-str">"霓虹灯下、飞行汽车穿梭的赛博朋克未来城市，连续平滑运镜"</span>,
+    response_modalities=[<span class="t-str">"video"</span>],           <span class="t-com"># ✅ 小写，SDK 枚举: text/image/audio/video/document</span>
+)
+
+<span class="t-com"># 视频输出是 VideoContent 块：data(base64) / uri / mime_type</span>
+<span class="t-kw">for</span> step <span class="t-kw">in</span> interaction.steps:                    <span class="t-com"># 产物在 steps → 输出内容里</span>
+    <span class="t-kw">for</span> c <span class="t-kw">in</span> <span class="t-fn">getattr</span>(step, <span class="t-str">"content"</span>, []) <span class="t-kw">or</span> []:
+        <span class="t-kw">if</span> <span class="t-fn">getattr</span>(c, <span class="t-str">"type"</span>, <span class="t-kw">None</span>) == <span class="t-str">"video"</span> <span class="t-kw">and</span> c.data:
+            <span class="t-kw">with</span> <span class="t-fn">open</span>(<span class="t-str">"out.mp4"</span>, <span class="t-str">"wb"</span>) <span class="t-kw">as</span> f:
+                f.write(base64.b64decode(c.data))</code></pre></div>
+        <div class="pane" data-pane="fmt"><pre><code>interaction = client.interactions.create(
+    model=<span class="t-str">"gemini-omni-flash-preview"</span>,
+    <span class="t-str">input</span>=<span class="t-str">"海边日出的电影感镜头"</span>,
+    response_mime_type=<span class="t-str">"video/mp4"</span>,       <span class="t-com"># ✅ 设了 response_format 就必须给</span>
+    response_format={
+        <span class="t-str">"type"</span>: <span class="t-str">"video"</span>,               <span class="t-com"># ✅ VideoResponseFormat</span>
+        <span class="t-str">"aspect_ratio"</span>: <span class="t-str">"16:9"</span>,        <span class="t-com"># "16:9" | "9:16"</span>
+        <span class="t-str">"duration"</span>: <span class="t-str">"8s"</span>,               <span class="t-com"># 字符串；具体可选值 ⚠️ 以官方为准</span>
+        <span class="t-str">"delivery"</span>: <span class="t-str">"inline"</span>,          <span class="t-com"># "inline"(base64) | "uri"(配 gcs_uri, Vertex)</span>
+    },
+)</code></pre></div>
+      </div>
+    </div>
+    <div class="callout tip"><p><strong>更正说明</strong>：本页上一版曾说"第三方教程的 <code>response_format={"type":"video",...}</code> 与官方冲突、勿抄"——那是<strong>我的误判</strong>。SDK 源码里 <code>VideoResponseFormat</code>（<code>type/aspect_ratio/duration/delivery/gcs_uri</code>）确为真实支持形态，两种写法都对。唯一存疑仍是 <code>duration</code> 的可选值范围与片长上限，以官方 Omni 页为准。</p></div>
+    <div class="callout note"><p><strong>另一条视频路径：Veo。</strong>除 Interactions API 外，SDK 的 <code>client.models.generate_videos()</code>（Veo 系模型，异步 operation）也生成视频，支持文本→/图像→/视频→视频。Omni 的差异化是"<strong>任意模态输入 + 对话式多轮编辑（<code>task="edit"</code>）+ 锚定真实世界知识</strong>"，走 Interactions API。选型时两者都评估。</p></div>
+
+    <h3>7.3 对话式多轮编辑（Omni 的招牌能力）</h3>
+    <p>Omni 的核心卖点是通过 Interactions API 做<strong>对话式迭代编辑</strong>：用自然语言描述"改什么、保留什么"，每次编辑<strong>建立在上一次之上</strong>，跨镜头保持<strong>角色一致、场景/地点延续</strong>，无需从头重生成。Interactions API 在<strong>服务端维护状态</strong>，续编辑靠回传 <code>previous_interaction_id</code>（= 上一次的 <code>interaction.id</code>）承接上下文——<strong>该字段已由官方 SDK README 核实</strong>：</p>
+    <div class="codewrap" data-cw>
+      <div class="tabbar"><button data-tab="py" class="active">Python（已核实）</button><span class="lang">多轮承接</span></div>
+      <div class="panes"><button class="copybtn">复制</button>
+        <div class="pane active" data-pane="py"><pre><code>first = client.interactions.create(model=<span class="t-str">"gemini-omni-flash-preview"</span>,
+                                   <span class="t-str">input</span>=<span class="t-str">"一段海边日出的镜头"</span>,
+                                   response_modalities=[<span class="t-str">"video"</span>])
+
+<span class="t-com"># 承接上一次，做增量编辑（服务端保留视觉上下文）</span>
+edited = client.interactions.create(
+    model=<span class="t-str">"gemini-omni-flash-preview"</span>,
+    <span class="t-str">input</span>=<span class="t-str">"把天空换成暴风雨，其余保持不变"</span>,
+    previous_interaction_id=first.id,     <span class="t-com"># ✅ 官方 README 已核实</span>
+    response_modalities=[<span class="t-str">"video"</span>],
+)</code></pre></div>
+      </div>
+    </div>
+    <div class="callout note"><p>与 Nano Banana 的"对话式修图"（图像）是同一思路的视频版：都靠会话状态保留视觉上下文，逐步迭代而非每次从零生成。</p></div>
+
+    <h3>7.4 选型定位</h3>
+    <ul>
+      <li>要<strong>视频</strong>（尤其任意模态输入、带同步音频、可对话式剪辑）→ <strong>Gemini Omni</strong>。</li>
+      <li>要<strong>静态图</strong>（生成/编辑/合成）→ Nano Banana（第 2–4 节）。</li>
+      <li>Omni 仍在 preview 且逐步开放；生产前确认你的项目已获访问权限与配额。</li>
+    </ul>
+  </section>
+
+  <!-- 8 -->
+  <section id="understand">
+    <h2><span class="num">8</span>图像理解 ≠ 图像生成</h2>
+    <p>很多人把"给模型一张图让它分析/描述/OCR"误当成图像生成，二者完全不同：</p>
+    <ul>
+      <li><strong>图像理解</strong>＝多模态文本理解：图片作为<strong>输入</strong>传给 Gemini（<code>inline_data</code> 或 File API），模型<strong>输出文本</strong>（描述、问答、检测、OCR）。消耗输入 token，走文本理解计费，<strong>不产生图片</strong>。</li>
+      <li><strong>图像生成</strong>（本文 2–5 节）＝模型<strong>输出图片</strong>。</li>
+    </ul>
+    <div class="callout note"><p>两者甚至可在同一次 <code>generateContent</code> 里组合：输入一张图、输出一张改后的图 + 一段说明文本。图像理解的写法见 <a href="gemini-text-api-guide.html#multimodal">文本篇 · 第 12 节 多模态输入</a>。</p></div>
+  </section>
+
+  <!-- 9 -->
+  <section id="appendix">
+    <h2><span class="num">9</span>附录 / 速查 / 待核对</h2>
+
+    <h3>9.1 速查</h3>
+    <table>
+      <tr><th>需求</th><th>用</th></tr>
+      <tr><td>文生图（新项目）</td><td><code>gemini-3.1-flash-image</code>（性价比）/ <code>gemini-3-pro-image-preview</code>（画质）</td></tr>
+      <tr><td>生成/编辑视频（任意输入）</td><td><strong>Gemini Omni</strong>：<code>gemini-omni-flash-preview</code> + <code>client.interactions.create</code>（preview）</td></tr>
+      <tr><td>编辑/合成/对话修图</td><td>Nano Banana + <code>client.chats.create</code> + <code>responseModalities:[TEXT,IMAGE]</code></td></tr>
+      <tr><td>取图（SDK）</td><td>遍历 <code>resp.parts</code>，<code>part.inline_data</code> → <code>part.as_image().save(...)</code></td></tr>
+      <tr><td>取图（REST）</td><td><code>candidates[0].content.parts[].inlineData.data</code>（base64）</td></tr>
+      <tr><td>认证头</td><td><code>x-goog-api-key: $GEMINI_API_KEY</code></td></tr>
+      <tr><td>存量 Imagen</td><td><code>imagen-4.0-generate-001</code> + <code>:predict</code>（尽快迁移）</td></tr>
+    </table>
+
+    <h3>9.2 待人工核对清单（因代理封锁未能逐字抓取官方页）</h3>
+    <ol>
+      <li><strong>Gemini Omni（第 7 节）</strong>：Interactions API 的字段（<code>input</code>/<code>response_modalities</code>/<code>response_format</code>=VideoResponseFormat/<code>previous_interaction_id</code>/VideoContent 输出/task 模式）<strong>已用官方 SDK v2.10.0 源码核实</strong>；仍需以官方 Omni 页复核的只有：<strong>确切模型 ID</strong>（<code>gemini-omni-flash-preview</code> 来自搜索）、<code>duration</code> 可选值/片长/分辨率上限、<strong>定价与配额</strong>、preview 开放范围。</li>
+      <li>各模型 ID 的 <code>-preview</code> 后缀现状（是否已转正）。</li>
+      <li>Nano Banana 的 token→美元换算与 1K 图实际 token 数（有开发者反馈与文档不符）。</li>
+      <li>Imagen <code>outputMimeType</code> 默认值、<code>:predict</code> 响应取图字段名（<code>bytesBase64Encoded</code> vs 其它）。</li>
+      <li>"Interactions API"（取图 <code>output_image.data</code>）与经典 <code>generateContent</code>（<code>inlineData</code>）的端点差异——确认你的代码用的是哪条表面。</li>
+      <li>多图上限（约 3,600）、各分辨率支持矩阵。</li>
+    </ol>
+
+    <hr>
+    <p style="color:var(--muted);font-size:14px"><strong>核对日期 2026-06-30。</strong>本环境代理封锁了对 <code>ai.google.dev</code> 的直接抓取，⚠️ 处请在可直连时按官方页逐字复核（模型 ID 后缀、定价、字段默认值、计费明细）。主要来源：<code>ai.google.dev</code> 的 image-generation / imagen / pricing / models / deprecations / migrate / image-understanding 页与 <code>googleapis/python-genai</code>。文本生成见 <a href="gemini-text-api-guide.html">姊妹篇</a>。</p>
+  </section>
+</main>
+</div>
+<script>
+(function(){
+  document.querySelectorAll('[data-cw]').forEach(function(cw){
+    var btns=cw.querySelectorAll('.tabbar button[data-tab]'), panes=cw.querySelectorAll('.pane');
+    btns.forEach(function(btn){btn.addEventListener('click',function(){
+      var t=btn.getAttribute('data-tab');
+      btns.forEach(function(b){b.classList.toggle('active',b===btn);});
+      panes.forEach(function(p){p.classList.toggle('active',p.getAttribute('data-pane')===t);});
+    });});
+  });
+  document.querySelectorAll('.copybtn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var pane=btn.parentElement.querySelector('.pane.active')||btn.parentElement.querySelector('.pane');
+      navigator.clipboard.writeText(pane?pane.innerText:'').then(function(){
+        var o=btn.textContent;btn.textContent='已复制 ✓';setTimeout(function(){btn.textContent=o;},1400);
+      }).catch(function(){btn.textContent='复制失败';});
+    });
+  });
+  var links=Array.prototype.slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  function onScroll(){var pos=window.scrollY+120,idx=0;
+    for(var i=0;i<secs.length;i++){if(secs[i]&&secs[i].offsetTop<=pos)idx=i;}
+    links.forEach(function(a,i){a.classList.toggle('active',i===idx);});}
+  window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+  var toggle=document.getElementById('menuToggle'),toc=document.getElementById('toc');
+  if(toggle){toggle.addEventListener('click',function(){toc.classList.toggle('open');});
+    toc.addEventListener('click',function(e){if(e.target.tagName==='A')toc.classList.remove('open');});}
+})();
+</script>
+</body>
+</html>
