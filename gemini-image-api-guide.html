@@ -336,49 +336,65 @@ jq -r <span class="t-str">'.predictions[0].bytesBase64Encoded'</span> imagen_res
   <section id="omni">
     <h2><span class="num">7</span>Gemini Omni（任意输入 → 视频）<span class="pill beta">preview · 新</span></h2>
 
-    <div class="callout pitfall"><p><strong>本节可信度分级，请务必看清。</strong>Gemini Omni 属新发布 / preview，走<strong>新的 Interactions API</strong>（<code>client.interactions.create</code>，与经典 <code>generateContent</code> 不同端点，<strong>不在 v1beta discovery doc 中</strong>）。官方 Omni 页 <code>ai.google.dev/gemini-api/docs/omni</code> 在本环境被<strong>组织出口策略封锁（403）无法直连核对</strong>。分级如下：</p>
+    <div class="callout note"><p><strong>本节字段已用官方 <code>google-genai</code> SDK 源码（v2.10.0，PyPI 直取）逐一核实</strong>——Interactions API 的视频生成能力真实存在。官方 Omni 文档页 <code>ai.google.dev/gemini-api/docs/omni</code> 在本环境被组织出口策略封锁（403）无法直连，因此仍有两类需你复核：</p>
       <ul style="margin:8px 0 0">
-        <li>✅ <strong>已由官方 SDK 源码核实</strong>：<code>client.interactions.create(model, input, ...)</code>、多轮承接字段 <code>previous_interaction_id</code>、多模态输出约定 <code>response_modalities=[...]</code>。</li>
-        <li>⚠️ <strong>未获官方证实</strong>：Omni 视频的具体输出字段与参数形态。<strong>第三方教程流传的 <code>response_format={"type":"video","aspect_ratio":...}</code> + <code>interaction.output_video.data</code> 与官方 <code>response_modalities</code> 约定相冲突</strong>，请勿照抄，以官方 Omni 页为准。</li>
-        <li>ℹ️ 官方 SDK README <strong>按名文档化的视频生成是 Veo</strong>（<code>client.models.generate_videos()</code>），并未收录 Omni 视频接口——见 7.2 末的对照。</li>
-      </ul></div>
+        <li>✅ <strong>SDK 源码已核实</strong>：<code>client.interactions.create(...)</code> 的参数（<code>input</code>、<code>response_modalities</code>、<code>response_format</code>、<code>response_mime_type</code>、<code>previous_interaction_id</code>、<code>cached_content</code> 等）、视频输出块 <code>VideoContent</code> 的字段、视频任务模式。下文代码即据此写。</li>
+        <li>⚠️ <strong>仍需以官方 Omni 页复核</strong>：确切模型 ID（<code>gemini-omni-flash-preview</code> 来自搜索，非 SDK）、定价、片长/分辨率上限、preview 期是否已开放到你的项目。</li>
+      </ul>
+      <p style="margin:8px 0 0"><em>更正上一版：此前把第三方教程的 <code>response_format={"type":"video",...}</code> 判为"与官方冲突、勿抄"——这是我判断错误。SDK 源码证实 <code>response_format</code> 的 <code>VideoResponseFormat</code> 是真实支持的形态。已在下文改正。</em></p></div>
 
     <h3>7.1 它是什么</h3>
     <p><strong>Gemini Omni Flash</strong> 是"任意输入 → 视频"的多模态生成模型：把<strong>文本 / 图像 / 音频 / 视频</strong>任意组合作为输入，产出<strong>带同步音频的视频</strong>，且视频内容锚定 Gemini 对真实世界的知识（物理、地理、文化、语言）。发布时约 <strong>10 秒短片</strong>；官方称未来会扩展到图像、音频等输出模态。</p>
     <table>
-      <tr><th>项</th><th>值</th></tr>
-      <tr><td>模型 ID</td><td><code>gemini-omni-flash-preview</code> ⚠️（来自搜索，未从 SDK/discovery 核对）</td></tr>
+      <tr><th>项</th><th>值（✅=SDK 源码核实；⚠️=待官方页复核）</th></tr>
+      <tr><td>模型 ID</td><td><code>gemini-omni-flash-preview</code> ⚠️（来自搜索，SDK 里 model 是通用字符串参数）</td></tr>
       <tr><td>API 表面</td><td>✅ <strong>Interactions API</strong>：<code>client.interactions.create(...)</code>（非 <code>generateContent</code>）</td></tr>
-      <tr><td>输入</td><td>文本 + 图像 + 音频 + 视频（任意组合）⚠️</td></tr>
-      <tr><td>输出</td><td>视频（含同步音频）；<strong>确切读取字段未证实</strong>（见 7.2，勿用第三方教程的 <code>output_video.data</code>）</td></tr>
-      <tr><td>时长 / 分辨率 / 画幅</td><td>约 4–10s；720p–4K；<code>16:9</code>/<code>9:16</code> ⚠️（是否可在调用层配置未证实）</td></tr>
+      <tr><td>输入 <code>input</code></td><td>✅ <code>str</code>，或 Content/Step/Turn 列表（多模态：文本/图像/音频/视频内容块任意组合）</td></tr>
+      <tr><td>请求视频输出</td><td>✅ <code>response_modalities=["video"]</code>（小写），或 <code>response_format={"type":"video", ...}</code>（细控，需配 <code>response_mime_type</code>）</td></tr>
+      <tr><td>视频输出块</td><td>✅ <code>VideoContent</code>：<code>data</code>（base64）/ <code>uri</code> / <code>mime_type</code>（<code>video/mp4</code> 等）/ <code>resolution</code></td></tr>
+      <tr><td>画幅 / 片长</td><td>✅ <code>aspect_ratio</code> ∈ <code>16:9</code>/<code>9:16</code>、<code>duration</code>（字符串）在 <code>response_format</code> 里；具体上限 ⚠️ 以官方为准</td></tr>
+      <tr><td>任务模式</td><td>✅ VideoConfig <code>task</code> ∈ <code>text_to_video</code> / <code>image_to_video</code> / <code>reference_to_video</code> / <code>edit</code></td></tr>
       <tr><td>水印</td><td>SynthID</td></tr>
       <tr><td>可用性</td><td>2026 I/O（5/19）发布，经 Gemini API + Agent Platform / Vertex 逐步向开发者/企业开放</td></tr>
     </table>
 
-    <h3>7.2 生成一段视频（调用骨架）</h3>
-    <p>下面用<strong>官方 SDK 已核实的 <code>interactions.create</code> 约定</strong>套用到 Omni 模型。注意：官方 SDK README 的多模态输出用 <code>response_modalities</code>（例如生成图像是 <code>response_modalities=['IMAGE']</code>），故视频<strong>推测</strong>为 <code>['VIDEO']</code>；<strong>但 README 未按名收录 Omni 视频，输出字段名未证实</strong>，以官方 Omni 页为准。</p>
+    <h3>7.2 生成一段视频</h3>
+    <p>两种请求视频输出的方式（字段均核实自 SDK 源码 <code>CreateModelInteraction</code>）：<strong>简法</strong>用 <code>response_modalities=["video"]</code>；<strong>细控</strong>用 <code>response_format</code>（<code>VideoResponseFormat</code>，可设画幅/时长/投递方式，需同时给 <code>response_mime_type</code>）。视频结果是一个 <code>VideoContent</code> 块，其 <code>data</code> 为 base64。</p>
     <div class="codewrap" data-cw>
-      <div class="tabbar"><button data-tab="py" class="active">Python（已核实约定）</button><span class="lang">Interactions API</span></div>
+      <div class="tabbar"><button data-tab="py" class="active">Python（简法 modalities）</button><button data-tab="fmt">Python（细控 response_format）</button><span class="lang">Interactions API</span></div>
       <div class="panes"><button class="copybtn">复制</button>
-        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">from</span> google <span class="t-kw">import</span> genai
+        <div class="pane active" data-pane="py"><pre><code><span class="t-kw">import</span> base64
+<span class="t-kw">from</span> google <span class="t-kw">import</span> genai
 
 client = genai.Client()
 
-<span class="t-com"># interactions.create / input / response_modalities 均为官方 README 已核实的约定</span>
 interaction = client.interactions.create(
-    model=<span class="t-str">"gemini-omni-flash-preview"</span>,   <span class="t-com"># ⚠️ 模型 ID 来自搜索，未从 SDK/discovery 核对</span>
+    model=<span class="t-str">"gemini-omni-flash-preview"</span>,       <span class="t-com"># ⚠️ 模型 ID 待官方页复核</span>
     <span class="t-str">input</span>=<span class="t-str">"霓虹灯下、飞行汽车穿梭的赛博朋克未来城市，连续平滑运镜"</span>,
-    response_modalities=[<span class="t-str">"VIDEO"</span>],           <span class="t-com"># ⚠️ 'VIDEO' 系按 SDK 约定推测（图像为 'IMAGE'）</span>
+    response_modalities=[<span class="t-str">"video"</span>],           <span class="t-com"># ✅ 小写，SDK 枚举: text/image/audio/video/document</span>
 )
 
-<span class="t-com"># ⚠️ 视频输出的确切读取方式未证实：REST 下产物在 steps 数组里，</span>
-<span class="t-com">#    SDK 可能有便捷字段。以官方 Omni 页为准，别照抄第三方教程的 output_video.data。</span>
-<span class="t-fn">print</span>(interaction)</code></pre></div>
+<span class="t-com"># 视频输出是 VideoContent 块：data(base64) / uri / mime_type</span>
+<span class="t-kw">for</span> step <span class="t-kw">in</span> interaction.steps:                    <span class="t-com"># 产物在 steps → 输出内容里</span>
+    <span class="t-kw">for</span> c <span class="t-kw">in</span> <span class="t-fn">getattr</span>(step, <span class="t-str">"content"</span>, []) <span class="t-kw">or</span> []:
+        <span class="t-kw">if</span> <span class="t-fn">getattr</span>(c, <span class="t-str">"type"</span>, <span class="t-kw">None</span>) == <span class="t-str">"video"</span> <span class="t-kw">and</span> c.data:
+            <span class="t-kw">with</span> <span class="t-fn">open</span>(<span class="t-str">"out.mp4"</span>, <span class="t-str">"wb"</span>) <span class="t-kw">as</span> f:
+                f.write(base64.b64decode(c.data))</code></pre></div>
+        <div class="pane" data-pane="fmt"><pre><code>interaction = client.interactions.create(
+    model=<span class="t-str">"gemini-omni-flash-preview"</span>,
+    <span class="t-str">input</span>=<span class="t-str">"海边日出的电影感镜头"</span>,
+    response_mime_type=<span class="t-str">"video/mp4"</span>,       <span class="t-com"># ✅ 设了 response_format 就必须给</span>
+    response_format={
+        <span class="t-str">"type"</span>: <span class="t-str">"video"</span>,               <span class="t-com"># ✅ VideoResponseFormat</span>
+        <span class="t-str">"aspect_ratio"</span>: <span class="t-str">"16:9"</span>,        <span class="t-com"># "16:9" | "9:16"</span>
+        <span class="t-str">"duration"</span>: <span class="t-str">"8s"</span>,               <span class="t-com"># 字符串；具体可选值 ⚠️ 以官方为准</span>
+        <span class="t-str">"delivery"</span>: <span class="t-str">"inline"</span>,          <span class="t-com"># "inline"(base64) | "uri"(配 gcs_uri, Vertex)</span>
+    },
+)</code></pre></div>
       </div>
     </div>
-    <div class="callout pitfall"><p><strong>不要照抄第三方教程的这套写法：</strong><code>response_format={"type":"video","aspect_ratio":"16:9"}</code> + <code>interaction.output_video.data</code>。它与官方 SDK 的 <code>response_modalities</code> 约定<strong>相冲突、未获一手源证实</strong>，很可能不对。时长 / 分辨率 / FPS / 画幅是否可在调用层配置也<strong>未证实</strong>。</p></div>
-    <div class="callout note"><p><strong>要现在就用稳定的视频生成？看 Veo。</strong>官方 SDK README <strong>按名文档化</strong>的视频生成是 <strong>Veo</strong>：<code>client.models.generate_videos()</code>，支持文本→视频、图像→视频、视频→视频。Omni 的差异化在于"<strong>任意模态输入 + 对话式多轮编辑 + 锚定真实世界知识</strong>"，但目前 preview、接口未在 SDK README 定型。生产选型时把两者都纳入评估。</p></div>
+    <div class="callout tip"><p><strong>更正说明</strong>：本页上一版曾说"第三方教程的 <code>response_format={"type":"video",...}</code> 与官方冲突、勿抄"——那是<strong>我的误判</strong>。SDK 源码里 <code>VideoResponseFormat</code>（<code>type/aspect_ratio/duration/delivery/gcs_uri</code>）确为真实支持形态，两种写法都对。唯一存疑仍是 <code>duration</code> 的可选值范围与片长上限，以官方 Omni 页为准。</p></div>
+    <div class="callout note"><p><strong>另一条视频路径：Veo。</strong>除 Interactions API 外，SDK 的 <code>client.models.generate_videos()</code>（Veo 系模型，异步 operation）也生成视频，支持文本→/图像→/视频→视频。Omni 的差异化是"<strong>任意模态输入 + 对话式多轮编辑（<code>task="edit"</code>）+ 锚定真实世界知识</strong>"，走 Interactions API。选型时两者都评估。</p></div>
 
     <h3>7.3 对话式多轮编辑（Omni 的招牌能力）</h3>
     <p>Omni 的核心卖点是通过 Interactions API 做<strong>对话式迭代编辑</strong>：用自然语言描述"改什么、保留什么"，每次编辑<strong>建立在上一次之上</strong>，跨镜头保持<strong>角色一致、场景/地点延续</strong>，无需从头重生成。Interactions API 在<strong>服务端维护状态</strong>，续编辑靠回传 <code>previous_interaction_id</code>（= 上一次的 <code>interaction.id</code>）承接上下文——<strong>该字段已由官方 SDK README 核实</strong>：</p>
@@ -387,14 +403,14 @@ interaction = client.interactions.create(
       <div class="panes"><button class="copybtn">复制</button>
         <div class="pane active" data-pane="py"><pre><code>first = client.interactions.create(model=<span class="t-str">"gemini-omni-flash-preview"</span>,
                                    <span class="t-str">input</span>=<span class="t-str">"一段海边日出的镜头"</span>,
-                                   response_modalities=[<span class="t-str">"VIDEO"</span>])
+                                   response_modalities=[<span class="t-str">"video"</span>])
 
 <span class="t-com"># 承接上一次，做增量编辑（服务端保留视觉上下文）</span>
 edited = client.interactions.create(
     model=<span class="t-str">"gemini-omni-flash-preview"</span>,
     <span class="t-str">input</span>=<span class="t-str">"把天空换成暴风雨，其余保持不变"</span>,
     previous_interaction_id=first.id,     <span class="t-com"># ✅ 官方 README 已核实</span>
-    response_modalities=[<span class="t-str">"VIDEO"</span>],
+    response_modalities=[<span class="t-str">"video"</span>],
 )</code></pre></div>
       </div>
     </div>
@@ -437,7 +453,7 @@ edited = client.interactions.create(
 
     <h3>9.2 待人工核对清单（因代理封锁未能逐字抓取官方页）</h3>
     <ol>
-      <li><strong>Gemini Omni（第 7 节）整节</strong>：模型 ID <code>gemini-omni-flash-preview</code>、Interactions API 的精确请求/响应字段（<code>response_format</code> 可配项、<code>output_video</code>/<code>videoBytes</code>、续编辑的 <code>previous_interaction_id</code>）、时长/分辨率/FPS 是否可配、REST 端点路径、定价与配额——均来自搜索摘要，未经 discovery doc 核对，务必以官方 Omni 页复核。</li>
+      <li><strong>Gemini Omni（第 7 节）</strong>：Interactions API 的字段（<code>input</code>/<code>response_modalities</code>/<code>response_format</code>=VideoResponseFormat/<code>previous_interaction_id</code>/VideoContent 输出/task 模式）<strong>已用官方 SDK v2.10.0 源码核实</strong>；仍需以官方 Omni 页复核的只有：<strong>确切模型 ID</strong>（<code>gemini-omni-flash-preview</code> 来自搜索）、<code>duration</code> 可选值/片长/分辨率上限、<strong>定价与配额</strong>、preview 开放范围。</li>
       <li>各模型 ID 的 <code>-preview</code> 后缀现状（是否已转正）。</li>
       <li>Nano Banana 的 token→美元换算与 1K 图实际 token 数（有开发者反馈与文档不符）。</li>
       <li>Imagen <code>outputMimeType</code> 默认值、<code>:predict</code> 响应取图字段名（<code>bytesBase64Encoded</code> vs 其它）。</li>
