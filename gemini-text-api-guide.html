@@ -118,7 +118,7 @@
   <p class="subtitle">写给懂工程、懂 HTTP/SDK 的程序员。以官方 <code>google-genai</code> Python SDK 为主线，cURL/REST 对照。聚焦经典 <code>generateContent</code> 接口。</p>
 
   <div class="callout warn">
-    <p><strong>时效与来源说明（务必先读）。</strong>本文核对日期 <strong>2026-06-30</strong>。事实来自：Gemini API 的 <strong>v1beta machine-readable discovery 文档</strong>（rev 20260629，权威）、官方 <strong><code>googleapis/python-genai</code> SDK 源码</strong>与 <strong><code>google-gemini/cookbook</code></strong>，以及对 <code>ai.google.dev</code> 官方页的搜索摘要。编写时本环境出口代理<strong>封锁了对 <code>ai.google.dev</code> 的直接抓取</strong>，故凡涉及<strong>易变的精确数字（定价、各模型上下文/输出上限、限流配额、thinkingBudget 各档范围）</strong>，请以官方文档与控制台为准——文中已用 ⚠️ 标注此类项。</p>
+    <p><strong>时效与来源说明（务必先读）。</strong>本文核对日期 <strong>2026-06-30</strong>。事实来自：Gemini API 的 <strong>v1beta machine-readable discovery 文档</strong>（rev 20260629，权威）、官方 <strong><code>googleapis/python-genai</code> SDK 源码</strong>与 <strong><code>google-gemini/cookbook</code></strong>，以及对 <code>ai.google.dev</code> 官方页的搜索摘要。编写时本环境出口代理<strong>封锁了对 <code>ai.google.dev</code> 的直接抓取</strong>，故凡涉及<strong>易变的精确数字（定价、各模型上下文/输出上限、限流配额、thinkingBudget 各档范围）</strong>，请以官方文档与控制台为准——文中已用 ⚠️ 标注此类项。此外，<strong>字段名 / 枚举值 / 异常类已额外用官方 <code>google-genai</code> SDK v2.10.0 源码（PyPI 直取）逐一核实</strong>，此类以 ✅ 标注、可放心使用。</p>
   </div>
 
   <!-- 1 -->
@@ -292,7 +292,7 @@ resp = client.models.generate_content(
       <tr><td><code>RECITATION</code></td><td>疑似复述受保护内容</td></tr>
       <tr><td><code>OTHER</code></td><td>其他边界情况</td></tr>
     </table>
-    <p>官方完整枚举通常还含 <code>FINISH_REASON_UNSPECIFIED</code>、<code>BLOCKLIST</code>、<code>PROHIBITED_CONTENT</code>、<code>SPII</code>、<code>MALFORMED_FUNCTION_CALL</code>、<code>LANGUAGE</code> 等（以 <a href="https://ai.google.dev/api/generate-content">Candidate 参考页</a> 为准）。</p>
+    <p>✅ <strong>SDK 源码核实的完整枚举</strong>（<code>FinishReason</code>，v2.10.0）：<code>STOP</code>、<code>MAX_TOKENS</code>、<code>SAFETY</code>、<code>RECITATION</code>、<code>LANGUAGE</code>、<code>OTHER</code>、<code>BLOCKLIST</code>、<code>PROHIBITED_CONTENT</code>、<code>SPII</code>、<code>MALFORMED_FUNCTION_CALL</code>、<code>UNEXPECTED_TOOL_CALL</code>、<code>FINISH_REASON_UNSPECIFIED</code>，以及图像相关的 <code>IMAGE_SAFETY</code> / <code>IMAGE_PROHIBITED_CONTENT</code> / <code>IMAGE_RECITATION</code> / <code>IMAGE_OTHER</code> / <code>NO_IMAGE</code>。</p>
     <p><code>usageMetadata</code> 关键字段：<code>promptTokenCount</code>（输入）、<code>candidatesTokenCount</code>（输出）、<code>totalTokenCount</code>、<code>thoughtsTokenCount</code>（思考）、缓存场景的 <code>cachedContentTokenCount</code>。</p>
   </section>
 
@@ -379,7 +379,7 @@ curl <span class="t-str">"https://generativelanguage.googleapis.com/v1beta/model
       <tr><td>2.5 Flash</td><td>0 – 24576</td><td>动态(-1)</td><td>是</td></tr>
       <tr><td>2.5 Flash-Lite</td><td>512 – 24576</td><td><strong>默认关闭</strong></td><td>是（需 -1 显式开启动态）</td></tr>
     </table>
-    <div class="callout warn"><p>⚠️ 上表各档具体数字来自搜索摘要、非逐字抓取；<code>0</code>/<code>-1</code> 语义来自官方 SDK 源码（可靠）。精确范围请以 <a href="https://ai.google.dev/gemini-api/docs/thinking">官方 thinking 页</a> 为准。设超范围值时 API 会就近调整。</p></div>
+    <div class="callout warn"><p>✅ 字段核实自 SDK v2.10.0 <code>ThinkingConfig</code>：<code>include_thoughts</code>(bool)、<code>thinking_budget</code>(int，docstring 原文 "0 is DISABLED. -1 is AUTOMATIC. default values and allowed ranges are model dependent")、<code>thinking_level</code>(枚举 <code>MINIMAL/LOW/MEDIUM/HIGH</code>)。⚠️ 但上表<strong>各档具体数字（128/24576/32768…）SDK 不含</strong>（它明说"因模型而异"），来自搜索摘要，精确范围以 <a href="https://ai.google.dev/gemini-api/docs/thinking">官方 thinking 页</a> 为准；设超范围值时 API 就近调整。</p></div>
 
     <h3>7.3 取思考摘要与示例</h3>
     <div class="codewrap" data-cw>
@@ -682,7 +682,8 @@ resp = client.models.generate_content(
 )</code></pre></div>
       </div>
     </div>
-    <p>part 结构（核对自 discovery doc）：内联 <code>{"inline_data":{"mime_type":...,"data":"&lt;base64&gt;"}}</code>；File API 引用 <code>{"file_data":{"mime_type":...,"file_uri":"&lt;uri&gt;"}}</code>。视频还可用 <code>videoMetadata</code> 设裁剪起止/FPS，<code>mediaResolution</code> 控制 token 成本。</p>
+    <p>✅ part 结构核实自 SDK v2.10.0（<code>Part</code>/<code>Blob</code>/<code>FileData</code>）：内联 <code>{"inline_data":{"mime_type":...,"data":"&lt;base64&gt;"}}</code>（<code>Blob</code>: <code>data</code>/<code>mime_type</code>/<code>display_name</code>）；File API 引用 <code>{"file_data":{"mime_type":...,"file_uri":"&lt;uri&gt;"}}</code>。视频还可用 <code>VideoMetadata</code>（<code>start_offset</code>/<code>end_offset</code>/<code>fps</code>）裁剪，<code>media_resolution</code> 控制 token 成本。</p>
+    <p>✅ <strong><code>MediaResolution</code> 枚举（SDK docstring 明写 token 数）</strong>：<code>MEDIA_RESOLUTION_LOW</code>=64 tokens、<code>MEDIA_RESOLUTION_MEDIUM</code>=256 tokens、<code>MEDIA_RESOLUTION_HIGH</code>=256 tokens（zoomed reframing）。这是每图块/帧的 token 单价来源；下表各模态的总量数字仍属文档级 ⚠️。</p>
 
     <h4>各模态的 token 成本与上限</h4>
     <table>
@@ -695,8 +696,8 @@ resp = client.models.generate_content(
 
     <h4>File API 要点</h4>
     <ul>
-      <li>上传 <code>client.files.upload(file=...)</code> 返回含 <code>name</code>（<code>files/{id}</code>）/ <code>uri</code> / <code>mimeType</code> / <code>state</code> 的对象；大文件/视频异步处理，<strong>用前等 <code>state == "ACTIVE"</code></strong>。</li>
-      <li>限制：单文件约 <strong>2GB</strong>、单项目约 <strong>20GB</strong>；<strong>保存 48 小时</strong>后自动删除（见 <code>expirationTime</code>）。⚠️</li>
+      <li>✅ 上传 <code>client.files.upload(file=...)</code> 返回 <code>File</code>（SDK 核实字段：<code>name</code>/<code>uri</code>/<code>mime_type</code>/<code>size_bytes</code>/<code>state</code>/<code>source</code>/<code>expiration_time</code>/<code>download_uri</code>/<code>error</code>）；<code>FileState</code> ∈ <code>PROCESSING</code>/<code>ACTIVE</code>/<code>FAILED</code>，大文件/视频异步处理，<strong>用前等 <code>state == "ACTIVE"</code></strong>。</li>
+      <li>⚠️ 限制（SDK 不含、文档级）：单文件约 <strong>2GB</strong>、单项目约 <strong>20GB</strong>；<strong>保存 48 小时</strong>后自动删除（见 <code>expiration_time</code>）。</li>
       <li>操作：<code>files.list()</code> / <code>files.get()</code> / <code>files.delete(name=...)</code>。</li>
     </ul>
     <div class="callout warn"><p>⚠️ part 字段结构核对自 discovery doc（可靠）；但<strong>各模态 token 单价、时长/页数/大小上限、48 小时保存期、2GB/20GB 配额</strong>来自搜索摘要。尤其注意：内联数据上限历史为 <strong>20MB</strong>，2025 年官方博客宣布升到 <strong>100MB</strong>，不同官方页可能仍写 20MB——超过就改用 File API。具体数字请以官方 <a href="https://ai.google.dev/gemini-api/docs/files">Files</a> 及各模态页为准。</p></div>
@@ -711,7 +712,7 @@ resp = client.models.generate_content(
       <tr><td><strong>隐式缓存</strong></td><td><strong>2.5+ 默认开启</strong>，无需写代码；前缀命中自动降价</td><td>无</td><td>2.5 Flash 约 1,024 / 2.5 Pro 约 2,048</td></tr>
       <tr><td><strong>显式缓存</strong></td><td>手动建 <code>CachedContent</code>（<code>client.caches.create()</code>），保证折扣</td><td>有（按 token×时长）</td><td>约 32,768（历史曾为 4,096，需核对）</td></tr>
     </table>
-    <p>关键字段（核对自 v1beta discovery doc 的 <code>CachedContent</code>）：<code>model</code>（必填、不可变，<code>models/{model}</code>）、<code>contents</code>/<code>systemInstruction</code>/<code>tools</code>（input-only、不可变）、<code>ttl</code>（时长串，<strong>默认 1 小时</strong>）或 <code>expireTime</code>（绝对时间）、<code>displayName</code>。请求里用顶层 <code>cachedContent</code>（= 缓存 <code>name</code>，如 <code>cachedContents/abc123</code>）引用。缓存命中 token 通常约<strong> 9 折优惠</strong>（即按标准输入价的约 10% 计 ⚠️）。</p>
+    <p>✅ 字段核实自 SDK v2.10.0。建缓存 <code>CreateCachedContentConfig</code>：<code>contents</code>、<code>system_instruction</code>、<code>tools</code>/<code>tool_config</code>、<code>ttl</code>（时长串，<strong>默认 1 小时</strong>）或 <code>expire_time</code>（绝对时间）、<code>display_name</code>、<code>kms_key_name</code>。缓存对象 <code>CachedContent</code>：<code>name</code>、<code>model</code>、<code>expire_time</code>、<code>usage_metadata</code>。请求里用 <code>GenerateContentConfig.cached_content</code>（= 缓存 <code>name</code>）引用（REST 为顶层 <code>cachedContent</code>）。⚠️ 缓存命中约 <strong>9 折</strong>优惠、门槛与存储单价 SDK 不含，以官方页为准。</p>
     <div class="codewrap" data-cw>
       <div class="tabbar"><button data-tab="py" class="active">Python（概念示例）</button><span class="lang">context caching</span></div>
       <div class="panes"><button class="copybtn">复制</button>
@@ -777,7 +778,7 @@ resp = client.models.generate_content(
 ]</code></pre></div>
       </div>
     </div>
-    <p>Gemini 2.5 与 3 系列对这些可配置类别<strong>默认阈值为 Off</strong>（默认不主动拦截，但仍有不可关闭的核心过滤，如 <code>RECITATION</code>/<code>PROHIBITED_CONTENT</code>）。⚠️ 有反馈 <code>BLOCK_NONE</code> 在某些模型上不完全生效。</p>
+    <p>✅ 上表 <code>HarmCategory</code> 四类与 <code>HarmBlockThreshold</code> 五档（<code>BLOCK_LOW_AND_ABOVE</code>/<code>BLOCK_MEDIUM_AND_ABOVE</code>/<code>BLOCK_ONLY_HIGH</code>/<code>BLOCK_NONE</code>/<code>OFF</code>）核实自 SDK v2.10.0 枚举。注意 <code>HARM_CATEGORY_CIVIC_INTEGRITY</code> SDK 已标 <strong>deprecated</strong>（选举过滤不再支持）；另有若干 <code>*_IMAGE_*</code>/<code>JAILBREAK</code> 类别 SDK 注明"Gemini API 不支持"。⚠️（文档级）Gemini 2.5/3 对可配置类别<strong>默认 Off</strong>，但核心过滤（<code>RECITATION</code>/<code>PROHIBITED_CONTENT</code>）不可关；有反馈 <code>BLOCK_NONE</code> 在某些模型上不完全生效。</p>
   </section>
 
   <!-- 16 -->
@@ -813,7 +814,7 @@ resp = client.models.generate_content(
             <span class="t-kw">raise</span></code></pre></div>
       </div>
     </div>
-    <div class="callout warn"><p>⚠️ SDK 异常类名（<code>google.genai.errors.APIError</code> / <code>ClientError</code> / <code>ServerError</code>）与 <code>.code</code> 字段以官方 SDK 为准；上例为通用形态。</p></div>
+    <div class="callout tip"><p>✅ 核实自 SDK v2.10.0 <code>google.genai.errors</code>：基类 <code>APIError</code>（属性 <code>.code</code> / <code>.status</code> / <code>.message</code>），子类 <code>ClientError</code>(4xx) 与 <code>ServerError</code>(5xx)；另有 <code>UnknownFunctionCallArgumentError</code> 等函数调用相关的 <code>ValueError</code>。上例的 <code>errors.APIError</code> + <code>e.code</code> 即据此。</p></div>
   </section>
 
   <!-- 17 -->
