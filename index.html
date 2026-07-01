@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM API 完整讲解 · Claude Opus & Google Gemini</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel2:#1b1f2a; --fg:#e6e9ef; --muted:#9aa3b2;
+    --line:#272c38; --opus:#d97757; --gem:#5a8dee; --gem2:#9b72f2; --warn:#d29922; --ok:#2ea043;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.7;font-size:16px}
+  .wrap{max-width:960px;margin:0 auto;padding:64px 24px 96px}
+  header{margin-bottom:40px}
+  h1{font-size:38px;line-height:1.2;margin:0 0 12px;
+    background:linear-gradient(90deg,var(--opus),var(--gem),var(--gem2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--muted);font-size:17px;margin:0}
+  .intro{margin:24px 0 8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;color:#cfd6e1;font-size:15px}
+  h2.section{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:44px 0 14px}
+  .grid{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:720px){.grid{grid-template-columns:1fr 1fr}}
+  a.card{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:22px 22px 20px;position:relative;overflow:hidden;transition:border-color .15s,transform .15s,background .15s}
+  a.card:hover{border-color:var(--accent,#3a4152);transform:translateY(-2px);background:var(--panel2)}
+  a.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+  a.card.opus{--accent:var(--opus)} a.card.opus:hover{border-color:var(--opus)}
+  a.card.gem{--accent:var(--gem)} a.card.gem:hover{border-color:var(--gem)}
+  a.card.img{--accent:var(--warn)} a.card.img:hover{border-color:var(--warn)}
+  .tag{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;border:1px solid var(--line);
+    color:var(--muted);background:var(--panel2);margin-bottom:12px}
+  .card h3{margin:0 0 8px;font-size:20px}
+  .card p{margin:0 0 12px;color:var(--muted);font-size:14px}
+  .card .meta{font-size:12px;color:#6f7787}
+  .card .go{margin-top:12px;font-size:13px;color:var(--accent);font-weight:600}
+  .card ul{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:13px}
+  .card li{margin:3px 0}
+  .full{grid-column:1/-1}
+  .legend{display:flex;gap:20px;flex-wrap:wrap;margin:14px 0 0;font-size:13px;color:var(--muted)}
+  .legend b{color:var(--fg)}
+  footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:#6f7787;font-size:13px}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.85em;background:var(--panel2);padding:1px 6px;border-radius:5px;color:#a9c7ff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>LLM API 完整讲解</h1>
+    <p class="sub">面向高级程序员（非 AI 背景）的 Claude 与 Gemini API 开发者指南 · 自包含 HTML · 中文</p>
+  </header>
+
+  <div class="intro">
+    <p style="margin:0">每份指南都是<strong>单文件、自包含</strong>（内联 CSS/JS、无外部依赖，浏览器直接打开），以 <strong>官方 SDK 为主线 + cURL/REST 对照</strong>，把"参数为什么存在、坑在哪"讲清楚。Gemini 两篇的<strong>字段名 / 枚举 / 异常类已用官方 <code>google-genai</code> SDK 源码逐一核实（✅）</strong>；定价、配额等服务端易变数字标 <strong>⚠️</strong> 提示以官方文档为准。</p>
+  </div>
+
+  <h2 class="section">Claude</h2>
+  <div class="grid">
+    <a class="card opus full" href="opus-message-api-guide.html">
+      <span class="tag">模型 · claude-opus-4-8</span>
+      <h3>Claude Opus · Message API 完整讲解</h3>
+      <p>17 章覆盖 Message API 全部要点：请求/响应结构、Thinking 与 Effort、<strong>流式响应处理</strong>、Tool Use、服务端/客户端工具、<strong>Agent / Coding Agent 构建</strong>、Prompt Caching、结构化输出、错误处理、多轮会话与速查。</p>
+      <div class="go">打开指南 →</div>
+    </a>
+  </div>
+
+  <h2 class="section">Google Gemini</h2>
+  <div class="grid">
+    <a class="card gem" href="gemini-text-api-guide.html">
+      <span class="tag">文本 · google-genai SDK</span>
+      <h3>Gemini API · 文本生成</h3>
+      <p>17 章聚焦经典 <code>generateContent</code>：</p>
+      <ul>
+        <li>模型阵容 / SDK / 端点 / 请求响应 / 流式 SSE / 多轮</li>
+        <li>Thinking、结构化输出、函数调用、搜索接地、代码执行</li>
+        <li>多模态输入、上下文缓存、token 计数、安全设置、错误与限流</li>
+      </ul>
+      <div class="go">打开指南 →</div>
+    </a>
+    <a class="card img" href="gemini-image-api-guide.html">
+      <span class="tag">图像 + 视频 · 媒体生成</span>
+      <h3>Gemini API · 图像与视频生成</h3>
+      <p>三条媒体生成路线，附选型对比：</p>
+      <ul>
+        <li><strong>Nano Banana</strong>（原生图像：生成/编辑/对话修图）</li>
+        <li><strong>Imagen</strong>（专用文生图，已弃用，仅迁移参考）</li>
+        <li><strong>Gemini Omni</strong>（任意输入→视频，Interactions API）</li>
+      </ul>
+      <div class="go">打开指南 →</div>
+    </a>
+  </div>
+
+  <div class="legend">
+    <span>可信度标注：</span>
+    <span><b style="color:var(--ok)">✅</b> 官方 SDK 源码核实</span>
+    <span><b style="color:var(--warn)">⚠️</b> 服务端数字，以官方文档/控制台为准</span>
+  </div>
+
+  <footer>
+    <p>核对日期 2026-06-30 ｜ Gemini 事实来自 v1beta discovery 文档、官方 <code>google-genai</code> SDK v2.10.0（PyPI 直取）与 cookbook；<code>ai.google.dev</code> 官方页在编写环境被出口策略封锁，易变数字（定价/配额/各档区间/模型 ID 后缀）请以官方文档复核。三份指南互相交叉链接。</p>
+  </footer>
+</div>
+</body>
+</html>
